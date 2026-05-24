@@ -181,7 +181,7 @@ export default function PlaidConnect({ vices }) {
             {linking ? 'Connecting…' : '+ Connect Bank'}
           </button>
         </div>
-      ) : status?.connected ? (
+      ) : (
         <div className="plaid-actions">
           <button className="btn" onClick={syncTransactions} disabled={syncing}>
             {syncing ? 'Scanning…' : '⬇ Import Transactions'}

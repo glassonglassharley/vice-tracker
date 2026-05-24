@@ -315,7 +315,7 @@ function AuthenticatedApp() {
     apiRef.current('/api/companion').then(setCompanion).catch(() => {});
   };
 
-  const ctx = { vices, viceStats, activeViceId, setActiveViceId, loadVices, companion, setCompanion, setShowOnboarding };
+  const ctx = { vices, viceStats, activeViceId, setActiveViceId, loadVices, companion, setCompanion, setShowOnboarding, theme };
   const activeVice = vices.find(v => v.id === activeViceId);
   const mobileSubtitle = location.pathname === '/log' && activeVice
     ? `${activeVice.emoji} ${activeVice.name}`

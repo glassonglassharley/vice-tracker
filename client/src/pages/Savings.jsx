@@ -143,7 +143,7 @@ function buildThemeColors() {
 
 export default function Savings() {
   const api = useApi();
-  const { vices } = useViceContext();
+  const { vices, theme } = useViceContext();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [horizon, setHorizon] = useState(365);
@@ -160,10 +160,11 @@ export default function Savings() {
   const [themeColors, setThemeColors] = useState(buildThemeColors);
 
   useEffect(() => {
+    setThemeColors(buildThemeColors());
     const observer = new MutationObserver(() => setThemeColors(buildThemeColors()));
     observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     if (vices.length === 0) {
@@ -234,7 +235,7 @@ export default function Savings() {
     secondary: themeColors.money2,
     muted: themeColors.ink4,
     hot: themeColors.warn,
-    warm: themeColors.good,
+    warm: themeColors.money,
   };
   const themedAssets = ASSETS.map(asset => ({
     ...asset,
