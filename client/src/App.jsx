@@ -42,12 +42,7 @@ function AccountControl({ collapsed = false }) {
   );
 }
 
-function Sidebar({ theme, setTheme, collapsed, setCollapsed, vices, activeViceId, setActiveViceId, mobileOpen, onMobileClose }) {
-  const handleViceClick = id => {
-    setActiveViceId(id);
-    onMobileClose?.();
-  };
-
+function Sidebar({ theme, setTheme, collapsed, setCollapsed, mobileOpen, onMobileClose }) {
   return (
     <aside className={`side${collapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
       <div className="side-top">
@@ -60,22 +55,6 @@ function Sidebar({ theme, setTheme, collapsed, setCollapsed, vices, activeViceId
         </button>
         <button className="side-close" onClick={onMobileClose} aria-label="Close menu">×</button>
       </div>
-
-      {vices.length > 0 && (
-        <div className="vice-list">
-          {vices.map(v => (
-            <button
-              key={v.id}
-              className={`vice-row${v.id === activeViceId ? ' active' : ''}`}
-              style={{ '--vice-c': v.color }}
-              onClick={() => handleViceClick(v.id)}
-            >
-              <span className="vice-glyph">{v.emoji || v.name[0]}</span>
-              {!collapsed && <span className="vice-name">{v.name}</span>}
-            </button>
-          ))}
-        </div>
-      )}
 
       <nav className="nav">
         {NAV.map(({ to, label, end }) => (
@@ -191,9 +170,6 @@ function AuthenticatedApp() {
           setTheme={setTheme}
           collapsed={mobileOpen ? false : collapsed}
           setCollapsed={setCollapsed}
-          vices={vices}
-          activeViceId={activeViceId}
-          setActiveViceId={setActiveViceId}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
         />
