@@ -1,0 +1,82 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../db');
+const { getInternalUserId } = require('../utils');
+
+function normalizeTimezone(value) {
+  const timezone = String(value || 'UTC').trim() || 'UTC';
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+    return timezone;
+  } catch (_) {
+    return 'UTC';
+  }
+}
+
+router.get('/config', (req, res) => {
+  res.json({
+    publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    pushEnabled: Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
+  });
+});
+
+router.put('/settings', async (req, res, next) => {
+  try {
+    const uid = await getInternalUserId(req.auth.userId);
+    const timezone = normalizeTimezone(req.body.timezone);
+    const enabled = Boolean(req.body.nightly_reminders_enabled);
+
+    const result = await pool.query(
+      `UPDATE users
+       SET timezone = $1, nightly_reminders_enabled = $2
+       WHERE id = $3
+       RETURNING id, timezone, nightly_reminders_enabled`,
+      [timezone, enabled, uid]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) { next(err); }
+});
+
+router.post('/subscriptions', async (req, res, next) => {
+  try {
+    const uid = await getInternalUserId(req.auth.userId);
+    const subscription = req.body.subscription || req.body;
+    const endpoint = subscription?.endpoint;
+    const p256dh = subscription?.keys?.p256dh;
+    const auth = subscription?.keys?.auth;
+
+    if (!endpoint || !p256dh || !auth) {
+      return res.status(400).json({ error: 'Valid push subscription required' });
+    }
+
+    await pool.query(
+      `INSERT INTO notification_subscriptions (user_id, endpoint, p256dh, auth)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (endpoint) DO UPDATE
+         SET user_id = EXCLUDED.user_id,
+             p256dh = EXCLUDED.p256dh,
+             auth = EXCLUDED.auth,
+             updated_at = NOW()`,
+      [uid, endpoint, p256dh, auth]
+    );
+
+    res.status(201).json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+router.delete('/subscriptions', async (req, res, next) => {
+  try {
+    const uid = await getInternalUserId(req.auth.userId);
+    const endpoint = req.body.endpoint;
+    if (endpoint) {
+      await pool.query('DELETE FROM notification_subscriptions WHERE user_id = $1 AND endpoint = $2', [uid, endpoint]);
+    } else {
+      await pool.query('DELETE FROM notification_subscriptions WHERE user_id = $1', [uid]);
+    }
+    await pool.query('UPDATE users SET nightly_reminders_enabled = FALSE WHERE id = $1', [uid]);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+module.exports = router;

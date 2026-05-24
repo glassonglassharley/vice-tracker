@@ -30,6 +30,7 @@ function demoOrClerkAuth(req, res, next) {
 app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
+app.use('/api/cron', require('./routes/cron'));
 app.use('/api', demoOrClerkAuth, ensureUser);
 
 app.use('/api/users',   require('./routes/users'));
@@ -37,6 +38,7 @@ app.use('/api/vices',   require('./routes/vices'));
 app.use('/api/entries', require('./routes/entries'));
 app.use('/api/stats',   require('./routes/stats'));
 app.use('/api/savings',  require('./routes/savings'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/partners', require('./routes/partners'));
 app.use('/api/goals',   require('./routes/goals'));
 app.use('/api/wrapped', require('./routes/wrapped'));

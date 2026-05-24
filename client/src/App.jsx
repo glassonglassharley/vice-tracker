@@ -95,11 +95,98 @@ function Sidebar({ theme, setTheme, collapsed, setCollapsed, mobileOpen, onMobil
             ))}
           </div>
         )}
+        <NightlyReminder collapsed={collapsed} />
         <div className="me">
           <AccountControl collapsed={collapsed} />
         </div>
       </div>
     </aside>
+  );
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+}
+
+function NightlyReminder({ collapsed = false }) {
+  const api = useApi();
+  const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
+
+  const canPush = typeof window !== 'undefined'
+    && 'Notification' in window
+    && 'serviceWorker' in navigator
+    && 'PushManager' in window;
+
+  const enableReminder = async () => {
+    setStatus('loading');
+    setMessage('');
+    try {
+      await api('/api/notifications/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          nightly_reminders_enabled: true,
+        }),
+      });
+
+      if (!canPush) {
+        setStatus('ready');
+        setMessage('Nightly zero-day tracking is on. Push reminders are not supported here.');
+        return;
+      }
+
+      const config = await api('/api/notifications/config');
+      if (!config.publicKey || !config.pushEnabled) {
+        setStatus('ready');
+        setMessage('Nightly zero-day tracking is on. Push keys still need to be configured.');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setStatus('ready');
+        setMessage('Zero-day tracking is on. Allow notifications to get nightly reminders.');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/vt-push-sw.js');
+      const existing = await registration.pushManager.getSubscription();
+      const subscription = existing || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+      });
+
+      await api('/api/notifications/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      });
+
+      setStatus('ready');
+      setMessage('Nightly reminders are on. Missed days will auto-count as 0.');
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+      setMessage(err.message || 'Could not enable reminders.');
+    }
+  };
+
+  if (collapsed) return null;
+
+  return (
+    <div className="nightly-reminder-card">
+      <div>
+        <div className="nightly-reminder-title">Nightly tracking</div>
+        <p>Get a reminder, and missed days auto-count as 0.</p>
+      </div>
+      <button className="nightly-reminder-btn" type="button" onClick={enableReminder} disabled={status === 'loading'}>
+        {status === 'loading' ? 'Turning on…' : 'Enable'}
+      </button>
+      {message && <div className={`nightly-reminder-msg ${status === 'error' ? 'error' : ''}`}>{message}</div>}
+    </div>
   );
 }
 

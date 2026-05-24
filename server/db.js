@@ -64,6 +64,20 @@ const SCHEMA = `
 const MIGRATIONS = `
   ALTER TABLE users ADD COLUMN IF NOT EXISTS companion_type TEXT;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS companion_state JSONB;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'UTC';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS nightly_reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS last_nightly_reminder_date DATE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS last_zero_fill_date DATE;
+
+  CREATE TABLE IF NOT EXISTS notification_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
 `;
 
 pool.query(SCHEMA)
