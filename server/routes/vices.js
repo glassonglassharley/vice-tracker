@@ -1,0 +1,58 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../db');
+const { getInternalUserId, verifyViceOwnership } = require('../utils');
+
+router.get('/', async (req, res, next) => {
+  try {
+    const uid = await getInternalUserId(req.auth.userId);
+    const r = await pool.query('SELECT * FROM vices WHERE user_id = $1 ORDER BY id', [uid]);
+    res.json(r.rows);
+  } catch (err) { next(err); }
+});
+
+router.post('/', async (req, res, next) => {
+  try {
+    const uid = await getInternalUserId(req.auth.userId);
+    const { name, unit_label, default_price, emoji, category, monthly_budget } = req.body;
+    if (!name) return res.status(400).json({ error: 'name required' });
+    const r = await pool.query(
+      `INSERT INTO vices (user_id, name, unit_label, default_price, emoji, category, monthly_budget)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [uid, name, unit_label || 'unit', default_price ?? 0, emoji || '🔴', category || 'Other', monthly_budget ?? null]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (err) { next(err); }
+});
+
+router.put('/:id', async (req, res, next) => {
+  try {
+    if (!await verifyViceOwnership(req.params.id, req.auth.userId))
+      return res.status(403).json({ error: 'Forbidden' });
+    const { name, unit_label, default_price, emoji, category, monthly_budget } = req.body;
+    const r = await pool.query(
+      `UPDATE vices SET
+        name         = COALESCE($1, name),
+        unit_label   = COALESCE($2, unit_label),
+        default_price = COALESCE($3, default_price),
+        emoji        = COALESCE($4, emoji),
+        category     = COALESCE($5, category),
+        monthly_budget = $6
+       WHERE id = $7 RETURNING *`,
+      [name, unit_label, default_price, emoji, category, monthly_budget ?? null, req.params.id]
+    );
+    res.json(r.rows[0]);
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    if (!await verifyViceOwnership(req.params.id, req.auth.userId))
+      return res.status(403).json({ error: 'Forbidden' });
+    const entryCount = await pool.query('SELECT COUNT(*) FROM entries WHERE vice_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM vices WHERE id = $1', [req.params.id]);
+    res.json({ ok: true, deleted_entries: parseInt(entryCount.rows[0].count) });
+  } catch (err) { next(err); }
+});
+
+module.exports = router;
