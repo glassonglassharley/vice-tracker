@@ -11,8 +11,8 @@ async function ensureUser(req, res, next) {
     );
 
     if (existing.rows.length === 0) {
-      let name = req.demoUsername ? `Demo ${req.demoUsername}` : 'User';
-      if (!req.demoUsername) {
+      let name = req.usernameAuth?.username || 'User';
+      if (!req.usernameAuth) {
         try {
           const u = await clerkClient.users.getUser(userId);
           name = [u.firstName, u.lastName].filter(Boolean).join(' ') ||

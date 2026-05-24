@@ -37,8 +37,8 @@ function AccountControl({ collapsed = false }) {
         <span className="avatar">{demoUsername.slice(0, 2).toUpperCase()}</span>
         {!collapsed && (
           <span className="me-text">
-            <span className="me-name">Demo: {demoUsername}</span>
-            <span className="me-sub">Click to sign out</span>
+            <span className="me-name">{demoUsername}</span>
+            <span className="me-sub">Username token account</span>
           </span>
         )}
       </button>
@@ -533,14 +533,23 @@ function EmailAuth() {
 function DemoLogin() {
   const { startDemo } = useDemoAuth();
   const [username, setUsername] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [issuedToken, setIssuedToken] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
+    setError('');
+    setIssuedToken('');
+    setLoading(true);
     try {
-      startDemo(username || 'demo');
+      const result = await startDemo(username, accessToken);
+      if (result.created) setIssuedToken(result.token);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -548,24 +557,42 @@ function DemoLogin() {
     <div className="demo-login-card">
       <div className="demo-card-top">
         <div>
-          <div className="demo-login-title">No account yet?</div>
-          <p className="demo-login-copy">Try a private username demo first. No email, no wallet, no setup.</p>
+          <div className="demo-login-title">Username access</div>
+          <p className="demo-login-copy">Claim a unique username. The app creates a one-time private access token that cannot be regenerated or copied by another user.</p>
         </div>
-        <span className="demo-badge">Demo</span>
+        <span className="demo-badge">Token</span>
       </div>
       <form onSubmit={handleSubmit} className="demo-login-form">
-        <label className="form-label" htmlFor="demo-username">Username</label>
-        <div className="demo-login-row">
-          <input
-            id="demo-username"
-            className="form-input"
-            value={username}
-            placeholder="demo"
-            autoComplete="username"
-            onChange={e => { setUsername(e.target.value); setError(''); }}
-          />
-          <button className="btn btn-primary" type="submit">Enter demo</button>
-        </div>
+        <label className="form-label" htmlFor="demo-username">Unique username</label>
+        <input
+          id="demo-username"
+          className="form-input"
+          value={username}
+          placeholder="your-name"
+          autoComplete="username"
+          required
+          minLength={3}
+          onChange={e => { setUsername(e.target.value); setError(''); setIssuedToken(''); }}
+        />
+        <label className="form-label" htmlFor="username-token">Access token</label>
+        <input
+          id="username-token"
+          className="form-input"
+          value={accessToken}
+          placeholder="Leave blank to claim a new username"
+          autoComplete="off"
+          onChange={e => { setAccessToken(e.target.value); setError(''); setIssuedToken(''); }}
+        />
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? 'Checking…' : 'Continue with username'}
+        </button>
+        {issuedToken && (
+          <div className="username-token-issued">
+            <strong>Save this private token now:</strong>
+            <code>{issuedToken}</code>
+            <span>You will need it to use this username on another device. It is stored on this device automatically.</span>
+          </div>
+        )}
         {error && <div className="form-error">{error}</div>}
       </form>
     </div>
@@ -617,7 +644,7 @@ function SignedOutContent() {
             <span>✓ Combined dashboard</span>
             <span>✓ Editable entries</span>
             <span>✓ Savings goals</span>
-            <span>✓ Demo mode</span>
+            <span>✓ Username token access</span>
           </div>
         </div>
 
@@ -633,7 +660,7 @@ function SignedOutContent() {
           <div className="clerk-frame">
             <EmailAuth />
           </div>
-          <div className="auth-divider"><span>or use demo last</span></div>
+          <div className="auth-divider"><span>or use a username token last</span></div>
           <DemoLogin />
         </div>
       </section>

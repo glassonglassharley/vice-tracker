@@ -68,6 +68,10 @@ const MIGRATIONS = `
   ALTER TABLE users ADD COLUMN IF NOT EXISTS nightly_reminders_enabled BOOLEAN NOT NULL DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS last_nightly_reminder_date DATE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS last_zero_fill_date DATE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_username TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS username_token_hash TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS users_auth_username_unique ON users (auth_username) WHERE auth_username IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS users_username_token_hash_unique ON users (username_token_hash) WHERE username_token_hash IS NOT NULL;
 
   CREATE TABLE IF NOT EXISTS notification_subscriptions (
     id SERIAL PRIMARY KEY,
