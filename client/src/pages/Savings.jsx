@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -118,26 +118,64 @@ function fmtBig(n) {
   return fmt$0(n);
 }
 
+function resolveCssColor(value) {
+  if (typeof window === 'undefined') return value;
+  const probe = document.createElement('span');
+  probe.style.color = value;
+  probe.style.position = 'absolute';
+  probe.style.opacity = '0';
+  probe.style.pointerEvents = 'none';
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  return resolved || value;
+}
+
 function readThemeColor(name, fallback) {
   if (typeof window === 'undefined') return fallback;
   const value = getComputedStyle(document.body).getPropertyValue(name).trim();
-  return value || fallback;
+  return resolveCssColor(value ? `var(${name})` : fallback);
+}
+
+function applyThemeClass(theme) {
+  if (typeof document === 'undefined' || !theme) return;
+  const nextClass = `theme-${theme}`;
+  if (document.body.classList.contains(nextClass)) return;
+  [...document.body.classList]
+    .filter(className => className.startsWith('theme-'))
+    .forEach(className => document.body.classList.remove(className));
+  document.body.classList.add(nextClass);
+}
+
+function withAlpha(color, alpha) {
+  const rgba = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (rgba) return `rgba(${rgba[1]}, ${rgba[2]}, ${rgba[3]}, ${alpha})`;
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const value = hex[1];
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return color;
 }
 
 function buildThemeColors() {
   return {
-    paper:  readThemeColor('--paper',   '#0a1f17'),
-    paper2: readThemeColor('--paper-2', '#11281f'),
-    ink:    readThemeColor('--ink',     '#e8efe0'),
-    ink2:   readThemeColor('--ink-2',   '#c8d4be'),
-    ink3:   readThemeColor('--ink-3',   '#8e9a85'),
-    ink4:   readThemeColor('--ink-4',   '#5f6f61'),
+    paper:  readThemeColor('--paper',   '#111111'),
+    paper2: readThemeColor('--paper-2', '#1a1a1a'),
+    ink1:   readThemeColor('--ink-1',   '#f5f5f5'),
+    ink:    readThemeColor('--ink',     '#f5f5f5'),
+    ink2:   readThemeColor('--ink-2',   '#d4d4d4'),
+    ink3:   readThemeColor('--ink-3',   '#9ca3af'),
+    ink4:   readThemeColor('--ink-4',   '#6b7280'),
     rule:   readThemeColor('--rule',    'rgba(232,239,224,0.08)'),
     rule2:  readThemeColor('--rule-2',  'rgba(232,239,224,0.20)'),
-    money:  readThemeColor('--money',   '#5ec48a'),
-    money2: readThemeColor('--money-2', '#2d6a4f'),
-    warn:   readThemeColor('--warn',    '#d46a4a'),
-    good:   readThemeColor('--good',    '#5ec48a'),
+    money:  readThemeColor('--money',   '#ff9f3f'),
+    money2: readThemeColor('--money-2', '#d76a00'),
+    accent: readThemeColor('--accent',  '#ff9f3f'),
+    warn:   readThemeColor('--warn',    '#ff5f4f'),
   };
 }
 
@@ -159,7 +197,8 @@ export default function Savings() {
   const [customGoalError, setCustomGoalError] = useState('');
   const [themeColors, setThemeColors] = useState(buildThemeColors);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    applyThemeClass(theme);
     setThemeColors(buildThemeColors());
     const observer = new MutationObserver(() => setThemeColors(buildThemeColors()));
     observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
@@ -231,15 +270,15 @@ export default function Savings() {
   const perDay    = data?.per_day || 0;
   const projected = perDay * horizon;
   const assetColors = {
-    primary: themeColors.money,
-    secondary: themeColors.money2,
-    muted: themeColors.ink4,
+    primary: themeColors.accent,
+    secondary: themeColors.money,
+    muted: themeColors.ink3,
     hot: themeColors.warn,
-    warm: themeColors.money,
+    warm: themeColors.money2,
   };
   const themedAssets = ASSETS.map(asset => ({
     ...asset,
-    color: assetColors[asset.colorKey] || themeColors.money,
+    color: assetColors[asset.colorKey] || themeColors.accent,
   }));
 
   // Chart: monthly data points up to horizon
@@ -259,7 +298,7 @@ export default function Savings() {
     label: a.label,
     data: points.map(d => Math.round(dcaFV(perDay, a.rate, d))),
     borderColor: a.color,
-    backgroundColor: a.color + '1a',
+    backgroundColor: withAlpha(a.color, 0.1),
     borderWidth: a.key === 'Cash' ? 1.5 : 2.5,
     borderDash: a.dash,
     pointRadius: 0,
@@ -281,7 +320,7 @@ export default function Savings() {
         borderColor: themeColors.rule2,
         borderWidth: 1,
         titleColor: themeColors.ink2,
-        bodyColor: themeColors.ink,
+        bodyColor: themeColors.ink1,
         callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtBig(ctx.parsed.y)}` },
       },
     },

@@ -71,6 +71,11 @@ body.theme-neon {
   --shadow: 0 1px 0 rgba(57,255,20,0.08) inset, 0 14px 34px rgba(0,0,0,0.58), 0 0 28px rgba(57,255,20,0.08);
 }
 
+body[class*="theme-"] {
+  --accent: var(--money);
+  --ink-1: var(--ink);
+}
+
 /* ── Reset ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { min-height: 100%; }
@@ -936,19 +941,19 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   font-size: 12px; background: transparent;
   transition: border-color 0.14s, color 0.14s, background 0.14s;
 }
-.sv-horizon-btn:hover { border-color: var(--money); color: var(--money); }
-.sv-horizon-btn.on   { border-color: var(--money); background: var(--money); color: var(--paper); }
+.sv-horizon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sv-horizon-btn.on   { border-color: var(--accent); background: var(--accent); color: var(--paper); }
 
 .sv-amount-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 20px; }
 .sv-dollar {
   font-family: var(--serif); font-style: italic;
-  font-size: 52px; color: var(--money); line-height: 1; letter-spacing: -0.01em;
+  font-size: 52px; color: var(--accent); line-height: 1; letter-spacing: -0.01em;
 }
 .sv-big-num {
   font-family: var(--serif); font-weight: 400;
   font-size: clamp(64px, 11vw, 118px);
   line-height: 0.88; letter-spacing: -0.045em;
-  color: var(--ink); font-variant-numeric: tabular-nums;
+  color: var(--ink-1); font-variant-numeric: tabular-nums;
 }
 
 .sv-chips { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -1024,20 +1029,20 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   cursor: pointer; transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
   display: flex; flex-direction: column; gap: 6px;
 }
-.sv-ms-card:hover { border-color: var(--money); transform: translateY(-2px); }
+.sv-ms-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .sv-ms-card.active {
-  border-color: var(--money);
-  background: color-mix(in srgb, var(--money) 8%, var(--paper-2));
-  box-shadow: 0 0 0 1px var(--money), 0 8px 24px rgba(0,0,0,0.28);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper-2));
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,0.28);
 }
 .sv-ms-label {
   font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--ink-3); font-weight: 500;
 }
-.sv-ms-card.active .sv-ms-label { color: var(--money); }
+.sv-ms-card.active .sv-ms-label { color: var(--accent); }
 .sv-ms-amount {
   font-family: var(--serif); font-size: 28px; font-weight: 400;
-  letter-spacing: -0.02em; color: var(--money); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em; color: var(--accent); font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .sv-ms-date { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
