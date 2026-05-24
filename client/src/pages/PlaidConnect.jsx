@@ -158,13 +158,11 @@ export default function PlaidConnect({ vices }) {
     }
   };
 
-  if (!status) return null;
-
   return (
     <div className="panel plaid-panel">
       <div className="panel-head">
         <span className="panel-title">🏦 Bank import</span>
-        {status.connected && (
+        {status?.connected && (
           <span className="plaid-connected-badge">
             ✓ {status.institution_name || 'Bank connected'}
           </span>
@@ -173,7 +171,7 @@ export default function PlaidConnect({ vices }) {
 
       {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
 
-      {!status.connected ? (
+      {!status?.connected ? (
         <div className="plaid-cta">
           <p className="plaid-copy">
             Connect your bank to automatically find vice-related purchases — alcohol, bars,
@@ -183,7 +181,7 @@ export default function PlaidConnect({ vices }) {
             {linking ? 'Connecting…' : '+ Connect Bank'}
           </button>
         </div>
-      ) : (
+      ) : status?.connected ? (
         <div className="plaid-actions">
           <button className="btn" onClick={syncTransactions} disabled={syncing}>
             {syncing ? 'Scanning…' : '⬇ Import Transactions'}
