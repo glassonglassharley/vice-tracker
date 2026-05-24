@@ -283,7 +283,7 @@ function SignedOutContent() {
 
         <div className="auth-card-panel">
           <div className="auth-card-head">
-            <span className="auth-pill">App Store quality tracker</span>
+            <span className="auth-pill">Private progress tracker</span>
             <h2>Welcome back</h2>
             <p>Start with a username demo or sign in securely with email.</p>
           </div>
