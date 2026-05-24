@@ -8,6 +8,7 @@ import {
 import { useApi } from '../useApi';
 import { useViceContext } from '../ViceContext';
 import { formatQuantityWithUnit } from '../formatUnits';
+import { GoalsSection, CelebOverlay } from './GoalsSection';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -105,12 +106,64 @@ export default function Dashboard() {
   const [recentEntries, setRecentEntries] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Goals state
+  const [goals, setGoals] = useState([]);
+  const [celebGoal, setCelebGoal] = useState(null);
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalAmt, setGoalAmt] = useState('');
+  const celebratedRef = useRef(new Set());
+
   const moneyColor = typeof document !== 'undefined'
     ? (getComputedStyle(document.body).getPropertyValue('--money').trim() || '#5ec48a')
     : '#5ec48a';
   const inkColor = typeof document !== 'undefined'
     ? (getComputedStyle(document.body).getPropertyValue('--ink-3').trim() || '#8e9a85')
     : '#8e9a85';
+
+  // Load goals once on mount
+  useEffect(() => {
+    apiRef.current('/api/goals').then(setGoals).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Celebrate when a goal is first reached
+  useEffect(() => {
+    if (!stats) return;
+    const savings = stats.savings_from_clean_days;
+    goals.filter(g => !g.completed_at).forEach(g => {
+      if (savings >= Number(g.target_amount) && !celebratedRef.current.has(g.id)) {
+        celebratedRef.current.add(g.id);
+        setCelebGoal(g);
+      }
+    });
+  }, [stats, goals]);
+
+  const createGoal = async (e) => {
+    e.preventDefault();
+    try {
+      const g = await apiRef.current('/api/goals', {
+        method: 'POST',
+        body: JSON.stringify({ title: goalTitle, target_amount: goalAmt }),
+      });
+      setGoals(gs => [g, ...gs]);
+      setGoalTitle(''); setGoalAmt(''); setShowGoalForm(false);
+    } catch {}
+  };
+
+  const markGoalDone = async (id) => {
+    try {
+      await apiRef.current(`/api/goals/${id}/complete`, { method: 'PUT' });
+      setGoals(gs => gs.map(g => g.id === id ? { ...g, completed_at: new Date().toISOString() } : g));
+      setCelebGoal(null);
+    } catch {}
+  };
+
+  const deleteGoal = async (id) => {
+    try {
+      await apiRef.current(`/api/goals/${id}`, { method: 'DELETE' });
+      setGoals(gs => gs.filter(g => g.id !== id));
+    } catch {}
+  };
 
   useEffect(() => {
     if (vices.length === 0) {
@@ -225,6 +278,14 @@ export default function Dashboard() {
         </Link>
       </div>
 
+      {celebGoal && (
+        <CelebOverlay
+          goal={celebGoal}
+          onComplete={() => markGoalDone(celebGoal.id)}
+          onDismiss={() => setCelebGoal(null)}
+        />
+      )}
+
       {loading ? <div className="loading">Loading…</div> : stats && (
         <>
           <div className="stats-strip">
@@ -244,6 +305,20 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          <GoalsSection
+            goals={goals}
+            savings={stats.savings_from_clean_days}
+            avgDailySpend={stats.avg_daily_spend}
+            showForm={showGoalForm}
+            setShowForm={setShowGoalForm}
+            goalTitle={goalTitle}
+            setGoalTitle={setGoalTitle}
+            goalAmt={goalAmt}
+            setGoalAmt={setGoalAmt}
+            onCreateGoal={createGoal}
+            onDeleteGoal={deleteGoal}
+          />
 
           <div className="grid-2">
             <div className="panel">

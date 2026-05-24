@@ -33,6 +33,15 @@ const SCHEMA = `
     UNIQUE (vice_id, date)
   );
 
+  CREATE TABLE IF NOT EXISTS goals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    target_amount NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+  );
+
   CREATE TABLE IF NOT EXISTS friendships (
     id SERIAL PRIMARY KEY,
     requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
