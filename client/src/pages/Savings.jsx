@@ -1,478 +1,311 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
+  LineElement, Title, Tooltip, Legend, Filler,
+} from 'chart.js';
+import { useApi } from '../useApi';
 import { useViceContext } from '../ViceContext';
-import { getUnitLabel } from '../formatUnits';
 
-const fmt$ = n => '$' + Number(n || 0).toFixed(2);
-const fmtBig = n => {
-  const v = Number(n || 0);
-  if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
-  if (v >= 10000) return '$' + (v / 1000).toFixed(0) + 'k';
-  if (v >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
-  return fmt$(v);
-};
-const fmtDays = d => d >= 3650 ? `${(d / 365).toFixed(0)}yr` : d >= 365 ? `${(d / 365).toFixed(1)}yr` : `${d}d`;
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-const dailyRate = pct => Math.pow(1 + pct / 100, 1 / 365) - 1;
-const dcaFV = (daily, days, annualPct) => {
-  const r = dailyRate(annualPct);
-  if (r === 0) return daily * days;
-  return daily * ((Math.pow(1 + r, days) - 1) / r);
+const TEAL_LIT = '#1acd8c';
+const VIOLET   = '#8b5cf6';
+const CYAN     = '#22d3ee';
+const GRAY     = '#4a5568';
+
+const DARK_VARS = {
+  '--paper':      '#070d0b',
+  '--paper-2':    '#0d1a15',
+  '--paper-3':    '#142319',
+  '--ink':        '#e8f5f0',
+  '--ink-2':      '#b0d4c2',
+  '--ink-3':      '#5a8a74',
+  '--ink-4':      '#2e4a3c',
+  '--rule':       'rgba(26,205,140,0.07)',
+  '--rule-2':     'rgba(26,205,140,0.16)',
+  '--money':      TEAL_LIT,
+  '--money-2':    '#0F6E56',
+  '--money-soft': 'rgba(26,205,140,0.12)',
+  '--warn':       '#f97316',
 };
 
 const ASSETS = [
-  { ticker: 'HYSA', name: 'High-Yield Savings', sub: 'FDIC insured · ~4.5% APY', rate: 4.5 },
-  { ticker: 'SPY',  name: 'S&P 500 Index',      sub: 'Diversified large-cap · historical avg', rate: 10.0 },
-  { ticker: 'VOO',  name: 'Vanguard S&P 500',   sub: 'Low expense ratio index fund', rate: 10.0 },
-  { ticker: 'QQQ',  name: 'Nasdaq 100',          sub: 'Tech-heavy growth index', rate: 13.0 },
-  { ticker: 'GOLD', name: 'Gold',                sub: 'Inflation hedge · commodity', rate: 7.5 },
-  { ticker: 'BTC',  name: 'Bitcoin',             sub: 'High risk / high variance', rate: 50.0 },
+  { key: 'Cash', label: 'Cash (no returns)', rate: 0,     color: GRAY,     dash: [5, 3] },
+  { key: 'HYSA', label: 'HYSA (4.5% APY)',  rate: 0.045, color: CYAN,     dash: [] },
+  { key: 'SPY',  label: 'S&P 500 (SPY)',    rate: 0.105, color: VIOLET,   dash: [] },
+  { key: 'VOO',  label: 'Vanguard (VOO)',   rate: 0.104, color: TEAL_LIT, dash: [] },
 ];
 
-const MS_DAYS = [30, 90, 365, 1825, 3650];
-
-const UNLOCKS = [
-  { name: 'Coffee run',      detail: 'Local café · specialty drink',      cost: 7 },
-  { name: 'Dinner for two',  detail: 'Nice restaurant with drinks',        cost: 120 },
-  { name: 'Gym month',       detail: 'Monthly membership pass',           cost: 50 },
-  { name: 'Massage',         detail: '60-minute deep tissue session',      cost: 90 },
-  { name: 'Round-trip flight', detail: 'Economy domestic',               cost: 350 },
-  { name: 'New laptop',      detail: 'MacBook Air M2 · entry level',      cost: 1099 },
-  { name: 'Vacation',        detail: '7-night resort all-inclusive',      cost: 2500 },
-  { name: 'Emergency fund',  detail: '3 months of expenses · ~$5k avg',   cost: 5000 },
+const MILESTONES = [
+  { days: 30,   label: '1 Month',  sub: '30 days clean' },
+  { days: 90,   label: '3 Months', sub: '90 days clean' },
+  { days: 365,  label: '1 Year',   sub: '365 days clean' },
+  { days: 1825, label: '5 Years',  sub: '1,825 days clean' },
 ];
 
-// ── SVG area/bars chart ──────────────────────────────────
-function SvgChart({ days, perDay, viceColor }) {
-  const [mode, setMode] = useState('area');
-  const W = 600, H = 240;
-  const PL = 16, PR = 20, PT = 12, PB = 8;
-  const cW = W - PL - PR, cH = H - PT - PB;
+const BUYS = [
+  { label: 'Coffee run',         sub: 'Local café treat',              cost: 25 },
+  { label: 'Nice dinner',        sub: 'For two, with drinks',          cost: 120 },
+  { label: 'AirPods Pro',        sub: 'Apple AirPods Pro 2nd gen',    cost: 249 },
+  { label: 'Weekend getaway',    sub: 'Airbnb + travel',               cost: 500 },
+  { label: 'New iPhone',         sub: 'Latest iPhone Pro',             cost: 999 },
+  { label: 'MacBook Air',        sub: 'M3, 16 GB RAM',                 cost: 1299 },
+  { label: 'Round-trip flights', sub: 'US → Europe, economy',         cost: 900 },
+  { label: 'MacBook Pro',        sub: 'M4 Pro, fully loaded',          cost: 2499 },
+  { label: 'E-bike',             sub: 'Premium commuter bike',         cost: 3500 },
+  { label: 'Dream vacation',     sub: 'Two weeks abroad',              cost: 4000 },
+  { label: 'Down payment fund',  sub: '1 month saved toward a home',  cost: 10000 },
+  { label: '10-year milestone',  sub: 'A decade of clean living',      cost: 36500 },
+];
 
-  const pts = useMemo(() => {
-    const n = Math.min(days, 150);
-    return Array.from({ length: n }, (_, i) => {
-      const d = Math.round(((i + 1) / n) * days);
-      return { d, y: perDay * d };
-    });
-  }, [days, perDay]);
-
-  const maxY = pts[pts.length - 1]?.y || 1;
-  const sx = d => PL + (d / days) * cW;
-  const sy = y => PT + (1 - y / maxY) * cH;
-
-  const linePath = pts
-    .map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.d).toFixed(1)},${sy(p.y).toFixed(1)}`)
-    .join(' ');
-  const areaPath = `${linePath} L${sx(days).toFixed(1)},${(PT + cH).toFixed(1)} L${PL},${(PT + cH).toFixed(1)} Z`;
-
-  const mDots = MS_DAYS.filter(m => m < days).map(m => ({ m, x: sx(m), y: sy(perDay * m) }));
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <div className="seg">
-          <button className={mode === 'area' ? 'on' : ''} onClick={() => setMode('area')}>Area</button>
-          <button className={mode === 'bars' ? 'on' : ''} onClick={() => setMode('bars')}>Bars</button>
-        </div>
-      </div>
-      <div className="chart-wrap">
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height="100%">
-          <defs>
-            <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={viceColor} stopOpacity="0.28" />
-              <stop offset="100%" stopColor={viceColor} stopOpacity="0.02" />
-            </linearGradient>
-          </defs>
-
-          {[0.25, 0.5, 0.75, 1].map(t => (
-            <line key={t} x1={PL} y1={PT + (1 - t) * cH} x2={W - PR} y2={PT + (1 - t) * cH}
-              stroke="var(--rule)" strokeWidth="0.6" />
-          ))}
-
-          {mode === 'area' ? (
-            <>
-              <path d={areaPath} fill="url(#sg)" />
-              <path d={linePath} fill="none" stroke={viceColor} strokeWidth="2" strokeLinejoin="round" />
-            </>
-          ) : (
-            pts.map((p, i) => {
-              const bw = Math.max(1, cW / pts.length - 0.5);
-              const bh = (p.y / maxY) * cH;
-              return (
-                <rect key={i} x={sx(p.d) - bw / 2} y={PT + cH - bh}
-                  width={bw} height={bh} fill={viceColor} opacity="0.55" rx="1" />
-              );
-            })
-          )}
-
-          {mDots.map(({ m, x, y }) => (
-            <g key={m}>
-              <line x1={x} y1={PT} x2={x} y2={PT + cH}
-                stroke="var(--rule-2)" strokeWidth="0.8" strokeDasharray="3,3" />
-              <circle cx={x} cy={y} r="3.5" fill={viceColor} stroke="var(--paper-2)" strokeWidth="2" />
-            </g>
-          ))}
-        </svg>
-      </div>
-    </div>
-  );
+function dcaFV(dailyPMT, annualRate, days) {
+  const r = annualRate / 365;
+  if (r === 0 || days === 0) return dailyPMT * days;
+  return dailyPMT * ((Math.pow(1 + r, days) - 1) / r);
 }
 
-// ── Mini sparkline for investment table ──────────────────
-function Sparkline({ days, perDay, rate }) {
-  const W = 80, H = 28;
-  const pts = Array.from({ length: 20 }, (_, i) => {
-    const d = Math.round(((i + 1) / 20) * days);
-    return { d, y: dcaFV(perDay, d, rate) };
-  });
-  const maxY = pts[pts.length - 1]?.y || 1;
-  const pathD = pts
-    .map((p, i) =>
-      `${i === 0 ? 'M' : 'L'}${((p.d / days) * W).toFixed(1)},${(H - (p.y / maxY) * H).toFixed(1)}`
-    )
-    .join(' ');
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block' }}>
-      <path d={pathD} fill="none" stroke="var(--money)" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
+const fmt$0 = n => '$' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const fmt$2 = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtBig(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+  return fmt$0(n);
 }
 
-// ── Main ─────────────────────────────────────────────────
 export default function Savings() {
-  const { vices, viceStats, activeViceId, setActiveViceId } = useViceContext();
-  const [days, setDays] = useState(365);
-  const [qtyPerDay, setQtyPerDay] = useState(1);
-  const [pricePerUnit, setPricePerUnit] = useState(5);
+  const api = useApi();
+  const { vices, activeViceId } = useViceContext();
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [horizon, setHorizon] = useState(365);
 
   const activeVice = vices.find(v => v.id === activeViceId);
-  const activeUnitLabel = getUnitLabel(activeVice);
-  const stats = activeViceId ? viceStats[activeViceId] : null;
-  const viceColor = activeVice?.color || 'var(--money)';
 
   useEffect(() => {
-    const s = viceStats[activeViceId];
-    if (!s) return;
-    if (s.avg_quantity_per_day > 0) setQtyPerDay(Math.max(0.5, s.avg_quantity_per_day));
-    if (s.avg_price_per_unit > 0)   setPricePerUnit(Math.max(1, Math.min(50, s.avg_price_per_unit)));
-  }, [activeViceId, viceStats]);
+    if (!activeViceId) return;
+    setLoading(true);
+    api(`/api/savings/${activeViceId}?days=1825`)
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [activeViceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const perDay   = useMemo(() => qtyPerDay * pricePerUnit, [qtyPerDay, pricePerUnit]);
-  const projected = perDay * days;
-  const perWeek  = perDay * 7;
-  const perMonth = perDay * 30.44;
+  const perDay    = data?.per_day || 0;
+  const projected = perDay * horizon;
 
-  const [whole, cents] = projected.toFixed(2).split('.');
-  const wholeStr = Number(whole).toLocaleString();
+  // Chart: monthly data points up to horizon
+  const maxDays = Math.max(horizon, 90);
+  const step    = Math.max(1, Math.floor(maxDays / 48));
+  const points  = [];
+  for (let d = 0; d <= maxDays; d += step) points.push(d);
+  if (points[points.length - 1] !== maxDays) points.push(maxDays);
 
-  const maxDailySpend = Math.max(
-    1,
-    ...vices.map(v => viceStats[v.id]?.avg_daily_spend || 0)
-  );
-  const BAR_H = 160;
+  const chartLabels = points.map(d => {
+    if (d === 0) return 'Now';
+    if (d < 365) return `${Math.round(d / 30)}mo`;
+    return `${(d / 365).toFixed(d % 365 === 0 ? 0 : 1)}yr`;
+  });
+
+  const chartDatasets = ASSETS.map(a => ({
+    label: a.label,
+    data: points.map(d => Math.round(dcaFV(perDay, a.rate, d))),
+    borderColor: a.color,
+    backgroundColor: a.color + '1a',
+    borderWidth: a.key === 'Cash' ? 1.5 : 2.5,
+    borderDash: a.dash,
+    pointRadius: 0,
+    tension: 0.35,
+    fill: false,
+  }));
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#5a8a74', boxWidth: 16, padding: 20, font: { size: 12 } },
+      },
+      tooltip: {
+        backgroundColor: '#0d1a15',
+        borderColor: 'rgba(26,205,140,0.22)',
+        borderWidth: 1,
+        titleColor: '#b0d4c2',
+        bodyColor: '#e8f5f0',
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtBig(ctx.parsed.y)}` },
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(26,205,140,0.06)' },
+        ticks: { color: '#5a8a74', maxTicksLimit: 8 },
+      },
+      y: {
+        grid: { color: 'rgba(26,205,140,0.06)' },
+        ticks: { color: '#5a8a74', callback: v => fmtBig(v) },
+      },
+    },
+  };
+
+  const msCards = MILESTONES.map(m => ({
+    ...m,
+    amount: perDay * m.days,
+    date: new Date(Date.now() + m.days * 86400000)
+      .toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+  }));
+
+  const affordable = BUYS.filter(b => b.cost <= projected).slice(-6);
+  const nextItems  = BUYS.filter(b => b.cost > projected).slice(0, 3);
 
   if (vices.length === 0) {
     return (
-      <main className="main">
+      <main className="main sv-page" style={DARK_VARS}>
         <div className="empty-state">
           <div className="empty-icon">💰</div>
-          <h2>No vices yet</h2>
-          <p>Add a vice in <Link to="/vices">Vices</Link> to see your savings potential.</p>
+          <h2>Add a vice to see your savings</h2>
+          <p>Go to <a href="/vices">Vices</a> to add one.</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="main" style={{ '--vice-c': viceColor }}>
-      {/* Breadcrumbs */}
+    <main className="main sv-page" style={DARK_VARS}>
       <div className="crumbs">
         <span>Vice Spending</span>
         <span className="sep">›</span>
         <span className="here">Savings</span>
         {activeVice && (
-          <span className="crumb-pill">
+          <span className="crumb-pill" style={{ '--vice-c': activeVice.color }}>
             <span className="dot" />
             {activeVice.emoji} {activeVice.name}
           </span>
         )}
       </div>
 
-      {/* Hero */}
-      <div className="hero">
-        <div>
-          <div className="hero-eyebrow">
-            If you quit <b>{activeVice?.name || 'today'}</b>
-          </div>
-          <div className="hero-headline">
-            You'd save <em>this much</em><br />
-            in {days >= 365 ? `${(days / 365).toFixed(1)} years` : `${days} days`}
-          </div>
-          <div className="hero-amount-wrap">
-            <div className="hero-amount">
-              <span className="dollar">$</span>{wholeStr}<span className="cents">.{cents}</span>
+      {/* ── Hero ── */}
+      <div className="sv-hero">
+        <div className="sv-hero-eyebrow">
+          If you quit <em>{activeVice?.name || 'this vice'}</em> for
+        </div>
+        <div className="sv-horizon-row">
+          {MILESTONES.map(m => (
+            <button
+              key={m.days}
+              className={`sv-horizon-btn${horizon === m.days ? ' on' : ''}`}
+              onClick={() => setHorizon(m.days)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {loading ? (
+          <div className="loading">Loading…</div>
+        ) : (
+          <>
+            <div className="sv-amount-row">
+              <span className="sv-dollar">$</span>
+              <span className="sv-big-num">
+                {Number(projected).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+              </span>
             </div>
+            <div className="sv-chips">
+              <span className="sv-chip">
+                <span className="sv-chip-lbl">per day</span>{fmt$2(perDay)}
+              </span>
+              <span className="sv-chip">
+                <span className="sv-chip-lbl">per week</span>{fmt$2(perDay * 7)}
+              </span>
+              <span className="sv-chip">
+                <span className="sv-chip-lbl">per month</span>{fmt$2(perDay * 30.44)}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Investment projection chart ── */}
+      {!loading && perDay > 0 && (
+        <div className="sv-section">
+          <div className="sv-section-head">
+            <span className="sv-section-title">If you invested those savings</span>
+            <span className="sv-section-sub">DCA at {fmt$2(perDay)}/day over {horizon} days</span>
           </div>
-          <div className="hero-foot">
-            <span className="chip"><span className="glyph">d</span>{fmt$(perDay)}/day</span>
-            <span className="chip"><span className="glyph">w</span>{fmt$(perWeek)}/wk</span>
-            <span className="chip"><span className="glyph">m</span>{fmtBig(perMonth)}/mo</span>
+          <div className="sv-chart-wrap">
+            <Line data={{ labels: chartLabels, datasets: chartDatasets }} options={chartOptions} />
           </div>
         </div>
+      )}
 
-        <div className="inputs">
-          <div className="inputs-title">
-            <span>Projection settings</span>
-            {stats && (
-              <button className="reset" onClick={() => {
-                const s = stats;
-                if (s.avg_quantity_per_day > 0) setQtyPerDay(Math.max(0.5, s.avg_quantity_per_day));
-                if (s.avg_price_per_unit > 0) setPricePerUnit(Math.max(1, Math.min(50, s.avg_price_per_unit)));
-                setDays(365);
-              }}>↺ Reset</button>
+      {/* ── Milestone cards ── */}
+      <div className="sv-section">
+        <div className="sv-section-head">
+          <span className="sv-section-title">Milestones</span>
+          <span className="sv-section-sub">Click a card to update the projection</span>
+        </div>
+        <div className="sv-ms-grid">
+          {msCards.map(m => (
+            <div
+              key={m.days}
+              className={`sv-ms-card${horizon === m.days ? ' active' : ''}`}
+              onClick={() => setHorizon(m.days)}
+            >
+              <div className="sv-ms-label">{m.label}</div>
+              <div className="sv-ms-amount">{fmtBig(m.amount)}</div>
+              <div className="sv-ms-date">by {m.date}</div>
+              <div className="sv-ms-sub">{m.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── What could you do ── */}
+      {!loading && (
+        <div className="sv-section">
+          <div className="sv-section-head">
+            <span className="sv-section-title">What could you do with that?</span>
+            <span className="sv-section-sub">
+              {fmt$2(perDay)}/day × {horizon} days = {fmt$0(projected)}
+            </span>
+          </div>
+          <div className="sv-buys">
+            {affordable.length > 0 && (
+              <div className="sv-buys-group">
+                <div className="sv-buys-label">✓ Within reach</div>
+                {affordable.map(b => (
+                  <div key={b.label} className="sv-buy sv-buy-yes">
+                    <div>
+                      <div className="sv-buy-name">{b.label}</div>
+                      <div className="sv-buy-sub">{b.sub}</div>
+                    </div>
+                    <div className="sv-buy-cost">{fmt$0(b.cost)}</div>
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
-
-          <div className="field">
-            <div className="field-head">
-              <span className="field-label">Time horizon</span>
-              <span className="field-val">
-                {days >= 365 ? (days / 365).toFixed(1) : days}
-                <span className="unit">{days >= 365 ? ' yr' : ' days'}</span>
-              </span>
-            </div>
-            <input type="range" className="slider" min={7} max={3650} step={1} value={days}
-              onChange={e => setDays(Number(e.target.value))} />
-            <div className="ticks"><span>7d</span><span>1yr</span><span>5yr</span><span>10yr</span></div>
-          </div>
-
-          <div className="field">
-            <div className="field-head">
-              <span className="field-label">{activeUnitLabel}/day</span>
-              <span className="field-val">
-                {Number(qtyPerDay).toFixed(1)}
-                <span className="unit"> {activeUnitLabel}</span>
-              </span>
-            </div>
-            <input type="range" className="slider" min={0.5} max={20} step={0.5} value={qtyPerDay}
-              onChange={e => setQtyPerDay(Number(e.target.value))} />
-            <div className="ticks"><span>0.5</span><span>5</span><span>10</span><span>20</span></div>
-          </div>
-
-          <div className="field">
-            <div className="field-head">
-              <span className="field-label">Price / {activeUnitLabel}</span>
-              <span className="field-val">{fmt$(pricePerUnit)}</span>
-            </div>
-            <input type="range" className="slider" min={1} max={50} step={0.5} value={pricePerUnit}
-              onChange={e => setPricePerUnit(Number(e.target.value))} />
-            <div className="ticks"><span>$1</span><span>$15</span><span>$30</span><span>$50</span></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats strip */}
-      <div className="stats-strip">
-        {[
-          { key: 'Per day',   val: perDay },
-          { key: 'Per week',  val: perWeek },
-          { key: 'Per month', val: perMonth },
-          { key: fmtDays(days), val: projected },
-        ].map(({ key, val }) => (
-          <div key={key} className="stat">
-            <div className="stat-key">{key}</div>
-            <div className="stat-val">{fmtBig(val)}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Category bars + chart */}
-      <div className="panel">
-        <div className="panel-head">
-          <span className="panel-title">
-            Spending by vice
-            <span className="small">daily avg</span>
-          </span>
-          <span className="panel-sub">{vices.length} tracked</span>
-        </div>
-
-        <div className="cat-head">
-          <div>
-            <div className="cat-total-label">Total daily spend</div>
-            <div className="cat-total-val">
-              {fmtBig(vices.reduce((s, v) => s + (viceStats[v.id]?.avg_daily_spend || 0), 0))}
-              <span className="small">/day</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="cat-bars">
-          {vices.map(v => {
-            const s = viceStats[v.id];
-            const daily = s?.avg_daily_spend || 0;
-            const barH = maxDailySpend > 0 ? Math.max(4, (daily / maxDailySpend) * BAR_H) : 4;
-            const isActive = v.id === activeViceId;
-            return (
-              <div
-                key={v.id}
-                className={`cat-bar-col${isActive ? ' active' : ''}`}
-                style={{ '--bar-c': v.color }}
-                onClick={() => setActiveViceId(v.id)}
-              >
-                <div className="cat-bar-val">{daily > 0 ? fmt$(daily) : '—'}</div>
-                <div className="cat-bar-track" style={{ height: BAR_H + 'px' }}>
-                  <div className="cat-bar-fill" style={{ height: barH + 'px' }} />
-                </div>
-                <div className="cat-bar-meta">
-                  <div className="cat-bar-glyph">{v.emoji}</div>
-                  <div className="cat-bar-name">{v.name}</div>
-                  <div className="cat-bar-sub">
-                    {s ? `${Number(s.avg_quantity_per_day || 0).toFixed(1)}/day` : '—'}
+            {nextItems.length > 0 && (
+              <div className="sv-buys-group">
+                <div className="sv-buys-label">Almost there…</div>
+                {nextItems.map(b => (
+                  <div key={b.label} className="sv-buy sv-buy-soon">
+                    <div>
+                      <div className="sv-buy-name">{b.label}</div>
+                      <div className="sv-buy-sub">{b.sub}</div>
+                    </div>
+                    <div className="sv-buy-cost sv-buy-cost-locked">{fmt$0(b.cost)}</div>
                   </div>
-                </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-
-        <div style={{ marginTop: 32 }}>
-          <SvgChart days={days} perDay={perDay} viceColor={viceColor} />
-        </div>
-      </div>
-
-      {/* Investment comparison */}
-      <div className="panel">
-        <div className="panel-head">
-          <span className="panel-title">
-            If you'd invested it instead
-            <span className="small">DCA · {fmtDays(days)}</span>
-          </span>
-        </div>
-        <div className="invested-head">
-          <span className="invested-eyebrow">{fmt$(perDay)}/day deposited for {days} days</span>
-          <span className="invested-legend">projected value</span>
-        </div>
-        <div className="inv-table">
-          <div className="inv-thead">
-            <div>Asset</div>
-            <div>CAGR</div>
-            <div className="inv-spark">Trend</div>
-            <div style={{ textAlign: 'right' }}>Value</div>
-            <div style={{ textAlign: 'right' }}>vs. cash</div>
-          </div>
-          {(() => {
-            const rows = ASSETS.map(a => ({
-              ...a,
-              fv: dcaFV(perDay, days, a.rate),
-              gain: dcaFV(perDay, days, a.rate) - projected,
-            })).sort((a, b) => b.fv - a.fv);
-            const maxFv = rows[0].fv;
-            return rows.map((r, i) => (
-              <div key={r.ticker} className={`inv-row${i === 0 ? ' win' : ''}`}>
-                <div className="inv-asset">
-                  <span className="inv-ticker">{r.ticker}</span>
-                  <div>
-                    <div className="inv-name">{r.name}</div>
-                    <div className="inv-sub">{r.sub}</div>
-                  </div>
-                </div>
-                <div className="inv-cagr">
-                  {r.rate.toFixed(1)}<span className="cagr-unit">%</span>
-                </div>
-                <div className="inv-spark">
-                  <Sparkline days={days} perDay={perDay} rate={r.rate} />
-                  <div className="inv-bar">
-                    <span style={{ width: `${(r.fv / maxFv) * 100}%` }} />
-                  </div>
-                </div>
-                <div className="inv-val">
-                  <div className="inv-val-big">{fmtBig(r.fv)}</div>
-                </div>
-                <div className="inv-gain">
-                  <div className={`inv-gain-num ${r.gain >= 0 ? 'up' : 'down'}`}>
-                    {r.gain >= 0 ? '+' : ''}{fmtBig(r.gain)}
-                  </div>
-                  <div className="inv-gain-pct">
-                    {projected > 0 ? `${((r.fv / projected - 1) * 100).toFixed(0)}% vs cash` : ''}
-                  </div>
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-      </div>
-
-      {/* Milestones + Unlocks */}
-      <div className="grid-2">
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Future you</span>
-            <span className="panel-sub">click to set horizon</span>
-          </div>
-          <ul className="milestones">
-            {MS_DAYS.map(m => {
-              const amt = perDay * m;
-              const isActive = days === m;
-              const dateStr = new Date(Date.now() + m * 864e5)
-                .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-              const labels = {
-                30: <><em>One month</em> clear</>,
-                90: <><em>Three months</em> clean</>,
-                365: <>A full <em>year</em> free</>,
-                1825: <><em>Five years</em> ahead</>,
-                3650: <><em>A decade</em> gained</>,
-              };
-              return (
-                <li key={m} className={`ms${isActive ? ' active' : ''}`} onClick={() => setDays(m)}>
-                  <div className="ms-date">
-                    <b>{dateStr}</b>
-                    {fmtDays(m)}
-                  </div>
-                  <div className="ms-label">{labels[m]}</div>
-                  <div className="ms-amt">{fmtBig(amt)}</div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">What that buys</span>
-            <span className="panel-sub">{fmtBig(projected)} total</span>
-          </div>
-          <div className="unlocks">
-            {UNLOCKS.filter(u => projected >= u.cost).map(u => (
-              <div key={u.name} className="unlock">
-                <div>
-                  <div className="unlock-name">{u.name}</div>
-                  <div className="unlock-detail">{u.detail}</div>
-                </div>
-                <div className="unlock-val">
-                  ×{Math.floor(projected / u.cost).toLocaleString()}
-                  <span className="suffix">{fmt$(u.cost)}</span>
-                </div>
-              </div>
-            ))}
-            {UNLOCKS.filter(u => projected >= u.cost).length === 0 && (
-              <p style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>
-                Adjust the sliders to see what you could buy.
+            )}
+            {affordable.length === 0 && projected < 25 && (
+              <p className="text-muted" style={{ padding: '24px 0' }}>
+                Log more entries to see personalized suggestions here.
               </p>
             )}
           </div>
         </div>
-      </div>
-
-      {/* CTA */}
-      <div className="cta-row">
-        <Link to="/log" className="btn">
-          Log today <span className="arrow">→</span>
-        </Link>
-        <Link to="/vices" className="btn ghost">
-          Manage vices
-        </Link>
-      </div>
+      )}
     </main>
   );
 }

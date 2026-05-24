@@ -611,6 +611,245 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .page-title { font-family: var(--serif); font-size: 22px; font-weight: 500; margin-bottom: 20px; letter-spacing: -0.4px; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
+/* ── Savings dark page ───────────────────────────── */
+.sv-page { background: var(--paper); }
+
+.sv-hero {
+  padding: 32px 0 44px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 44px;
+}
+.sv-hero-eyebrow {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 500; margin-bottom: 16px;
+}
+.sv-hero-eyebrow em { font-style: italic; color: var(--ink-2); font-size: 12px; }
+
+.sv-horizon-row { display: flex; gap: 8px; margin-bottom: 26px; flex-wrap: wrap; }
+.sv-horizon-btn {
+  padding: 6px 16px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rule-2); color: var(--ink-3);
+  font-size: 12px; background: transparent;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.sv-horizon-btn:hover { border-color: var(--money); color: var(--money); }
+.sv-horizon-btn.on   { border-color: var(--money); background: var(--money); color: var(--paper); }
+
+.sv-amount-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 20px; }
+.sv-dollar {
+  font-family: var(--serif); font-style: italic;
+  font-size: 52px; color: var(--money); line-height: 1; letter-spacing: -0.01em;
+}
+.sv-big-num {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(64px, 11vw, 118px);
+  line-height: 0.88; letter-spacing: -0.045em;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+
+.sv-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.sv-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 999px;
+  background: var(--paper-2); color: var(--ink-2);
+  font-family: var(--mono); font-size: 12px;
+  border: 1px solid var(--rule);
+}
+.sv-chip-lbl {
+  color: var(--ink-3); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+/* ── Savings sections ─────────────────────────────── */
+.sv-section { margin-bottom: 52px; }
+.sv-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 8px;
+}
+.sv-section-title {
+  font-family: var(--serif); font-size: 22px; font-weight: 400;
+  letter-spacing: -0.015em; color: var(--ink);
+}
+.sv-section-sub { font-size: 12px; color: var(--ink-3); font-family: var(--mono); }
+
+.sv-chart-wrap {
+  background: var(--paper-2); border: 1px solid var(--rule);
+  border-radius: 14px; padding: 24px 20px; height: 300px;
+}
+
+/* ── Milestone cards ──────────────────────────────── */
+.sv-ms-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+.sv-ms-card {
+  background: var(--paper-2); border: 1px solid var(--rule);
+  border-radius: 12px; padding: 20px 18px;
+  cursor: pointer; transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sv-ms-card:hover { border-color: var(--money); transform: translateY(-2px); }
+.sv-ms-card.active {
+  border-color: var(--money);
+  background: color-mix(in srgb, var(--money) 8%, var(--paper-2));
+  box-shadow: 0 0 0 1px var(--money), 0 8px 24px rgba(0,0,0,0.28);
+}
+.sv-ms-label {
+  font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 500;
+}
+.sv-ms-card.active .sv-ms-label { color: var(--money); }
+.sv-ms-amount {
+  font-family: var(--serif); font-size: 28px; font-weight: 400;
+  letter-spacing: -0.02em; color: var(--money); font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.sv-ms-date { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.sv-ms-sub  { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+
+/* ── What could you buy ───────────────────────────── */
+.sv-buys { display: flex; flex-direction: column; gap: 28px; }
+.sv-buys-group { display: flex; flex-direction: column; gap: 0; }
+.sv-buys-label {
+  font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 500; margin-bottom: 12px;
+}
+.sv-buy {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-radius: 10px; gap: 16px;
+  margin-bottom: 6px;
+}
+.sv-buy:last-child { margin-bottom: 0; }
+.sv-buy-yes {
+  background: color-mix(in srgb, var(--money) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--money) 22%, transparent);
+}
+.sv-buy-soon {
+  background: var(--paper-2); border: 1px solid var(--rule); opacity: 0.65;
+}
+.sv-buy-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.sv-buy-sub  { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; font-family: var(--mono); }
+.sv-buy-cost {
+  font-family: var(--serif); font-size: 20px;
+  color: var(--money); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sv-buy-cost-locked { color: var(--ink-4); }
+
+/* ── Insights page ───────────────────────────────── */
+.insights-chat {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rule); border-radius: 14px;
+  background: var(--paper-2); overflow: hidden;
+  min-height: 500px; max-height: 700px;
+}
+.insights-messages {
+  flex: 1; overflow-y: auto; padding: 24px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.insights-spinner {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  color: var(--ink-3); font-family: var(--mono); font-size: 13px;
+}
+.insights-dots { display: flex; gap: 8px; }
+.insights-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--money);
+  animation: ins-pulse 1.2s ease-in-out infinite;
+}
+.insights-dot:nth-child(2) { animation-delay: 0.2s; }
+.insights-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ins-pulse {
+  0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+  40%          { transform: scale(1);   opacity: 1;   }
+}
+.insights-error {
+  padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border: 1px solid var(--warn); color: var(--warn); font-size: 13px;
+}
+.ins-msg { display: flex; gap: 12px; max-width: 88%; }
+.ins-msg-user { align-self: flex-end; flex-direction: row-reverse; }
+.ins-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+  background: var(--money); color: var(--paper);
+  display: grid; place-items: center;
+  font-family: var(--serif); font-style: italic; font-size: 15px;
+}
+.ins-bubble {
+  background: var(--paper-3); border: 1px solid var(--rule);
+  border-radius: 12px; padding: 14px 18px;
+  font-size: 14px; line-height: 1.65; color: var(--ink-2);
+}
+.ins-bubble p { margin: 0; }
+.ins-bubble p + p { margin-top: 8px; }
+.ins-msg-user .ins-bubble {
+  background: var(--money-soft); border-color: var(--money); color: var(--ink);
+}
+.ins-typing {
+  display: flex; align-items: center; gap: 6px; padding: 16px 20px;
+}
+.ins-typing span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3);
+  animation: ins-bounce 1.2s ease-in-out infinite;
+}
+.ins-typing span:nth-child(2) { animation-delay: 0.2s; }
+.ins-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ins-bounce {
+  0%,80%,100% { transform: translateY(0); }
+  40%          { transform: translateY(-5px); }
+}
+.insights-input-row {
+  display: flex; gap: 10px; padding: 16px 20px;
+  border-top: 1px solid var(--rule); background: var(--paper);
+}
+.insights-input-row .form-input { flex: 1; }
+
+/* ── Member since / lifetime ─────────────────────── */
+.member-since {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; border-radius: 10px;
+  background: var(--money-soft); border: 1px solid var(--money);
+  margin-bottom: 24px; flex-wrap: wrap;
+}
+.member-since-icon { font-size: 22px; }
+.member-since-text { flex: 1; min-width: 0; }
+.member-since-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.member-since-sub   { font-size: 12px; color: var(--ink-3); margin-top: 2px; font-family: var(--mono); }
+.member-since-stat  { text-align: right; }
+.member-since-val   { font-family: var(--serif); font-size: 22px; color: var(--money); font-variant-numeric: tabular-nums; }
+.member-since-val-lbl { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
+
+/* ── Year in review ──────────────────────────────── */
+.yir-section { margin-top: 32px; }
+.yir-year-block { margin-bottom: 28px; }
+.yir-year-head {
+  display: flex; align-items: baseline; gap: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--rule); margin-bottom: 14px;
+}
+.yir-year-num { font-family: var(--serif); font-size: 24px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+.yir-year-total { font-family: var(--mono); font-size: 13px; color: var(--money); }
+.yir-year-clean { font-size: 12px; color: var(--ink-3); font-family: var(--mono); margin-left: auto; }
+.yir-vices { display: flex; flex-direction: column; gap: 6px; }
+.yir-vice-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; border-radius: 8px; background: var(--paper-2);
+}
+.yir-vice-emoji { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
+.yir-vice-name  { flex: 1; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.yir-vice-spend { font-family: var(--mono); font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.yir-vice-clean { font-size: 11px; color: var(--money); font-family: var(--mono); margin-left: 8px; }
+.yir-max-day    { font-size: 11px; color: var(--ink-4); font-family: var(--mono); margin-top: 6px; padding: 0 12px; }
+.yir-empty { padding: 32px 0; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+/* ── Notes entry field ───────────────────────────── */
+.form-textarea {
+  padding: 8px 10px; border: 1px solid var(--rule-2); border-radius: 8px;
+  font: inherit; font-size: 14px; background: var(--paper-3);
+  color: var(--ink); transition: border 0.15s; outline: none;
+  resize: vertical; min-height: 72px; font-family: var(--sans);
+}
+.form-textarea:focus { border-color: var(--money); background: var(--paper-2); }
+.form-textarea::placeholder { color: var(--ink-4); }
+.entry-note { font-size: 11px; color: var(--ink-3); font-style: italic; margin-top: 2px; padding: 0 4px; }
+
 /* ── Responsive ──────────────────────────────────── */
 @media (max-width: 768px) {
   body.mobile-menu-open { overflow: hidden; }
@@ -691,4 +930,12 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .entry-item { flex-wrap: wrap; }
   .vice-header, .page-header, .budget-bar-label { gap: 12px; flex-wrap: wrap; }
   .vice-stats-row { flex-wrap: wrap; gap: 8px 14px; }
+  .sv-ms-grid { grid-template-columns: repeat(2,1fr); }
+  .sv-big-num { font-size: clamp(54px, 15vw, 82px); }
+  .sv-dollar  { font-size: 38px; }
+  .sv-chart-wrap { height: 220px; padding: 16px; }
+  .insights-chat { min-height: 420px; max-height: 560px; }
+  .ins-msg { max-width: 95%; }
+  .yir-year-head { flex-wrap: wrap; gap: 8px; }
+  .member-since { gap: 10px; }
 }
