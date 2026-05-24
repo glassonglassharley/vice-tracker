@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useSignIn, useUser } from '@clerk/clerk-react';
+import { ClerkProvider, SignedIn, SignedOut, UserButton, useSignIn, useSignUp, useUser } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import LogEntry from './pages/LogEntry';
@@ -367,6 +367,145 @@ function WalletSignIn() {
   );
 }
 
+function EmailAuth() {
+  const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  const { isLoaded: signUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const [mode, setMode] = useState('signIn');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const authReady = mode === 'signIn' ? signInLoaded : signUpLoaded;
+
+  const switchMode = nextMode => {
+    setMode(nextMode);
+    setError('');
+    setCode('');
+    setPendingVerification(false);
+  };
+
+  const messageFromError = err => err?.errors?.[0]?.longMessage
+    || err?.errors?.[0]?.message
+    || err.message
+    || 'Something went wrong. Please try again.';
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!authReady) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      if (mode === 'signIn') {
+        const result = await signIn.create({ identifier: email.trim(), password });
+        if (result.status === 'complete' && result.createdSessionId) {
+          await setSignInActive({ session: result.createdSessionId });
+          return;
+        }
+        setError('Email sign-in needs another step. Check that email/password sign-in is enabled in Clerk.');
+        return;
+      }
+
+      if (pendingVerification) {
+        const result = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+        if (result.status === 'complete' && result.createdSessionId) {
+          await setSignUpActive({ session: result.createdSessionId });
+          return;
+        }
+        setError('That verification code did not finish sign-up. Try again.');
+        return;
+      }
+
+      const result = await signUp.create({ emailAddress: email.trim(), password });
+      if (result.status === 'complete' && result.createdSessionId) {
+        await setSignUpActive({ session: result.createdSessionId });
+        return;
+      }
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setPendingVerification(true);
+    } catch (err) {
+      setError(messageFromError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="demo-login-card email-login-card">
+      <div className="demo-card-top">
+        <div>
+          <div className="demo-login-title">{mode === 'signIn' ? 'Sign in with email' : 'Create an account'}</div>
+          <p className="demo-login-copy">
+            {pendingVerification
+              ? 'Enter the verification code sent to your email.'
+              : 'Use email and password if you do not want to connect a wallet.'}
+          </p>
+        </div>
+        <span className="demo-badge">Email</span>
+      </div>
+      <form onSubmit={handleSubmit} className="demo-login-form">
+        {!pendingVerification ? (
+          <>
+            <label className="form-label" htmlFor="email-auth-email">Email</label>
+            <input
+              id="email-auth-email"
+              className="form-input"
+              type="email"
+              value={email}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              onChange={e => { setEmail(e.target.value); setError(''); }}
+            />
+            <label className="form-label" htmlFor="email-auth-password">Password</label>
+            <input
+              id="email-auth-password"
+              className="form-input"
+              type="password"
+              value={password}
+              placeholder="Password"
+              autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+              required
+              minLength={8}
+              onChange={e => { setPassword(e.target.value); setError(''); }}
+            />
+          </>
+        ) : (
+          <>
+            <label className="form-label" htmlFor="email-auth-code">Verification code</label>
+            <input
+              id="email-auth-code"
+              className="form-input"
+              value={code}
+              placeholder="123456"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              required
+              onChange={e => { setCode(e.target.value); setError(''); }}
+            />
+          </>
+        )}
+        <button className="btn btn-primary" type="submit" disabled={loading || !authReady}>
+          {loading ? 'Working…' : pendingVerification ? 'Verify email' : mode === 'signIn' ? 'Sign in' : 'Create account'}
+        </button>
+        {error && <div className="form-error">{error}</div>}
+      </form>
+      {!pendingVerification && (
+        <button
+          className="clerk-link email-auth-switch"
+          type="button"
+          onClick={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')}
+        >
+          {mode === 'signIn' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function DemoLogin() {
   const { startDemo } = useDemoAuth();
   const [username, setUsername] = useState('');
@@ -468,21 +607,7 @@ function SignedOutContent() {
           <WalletSignIn />
           <div className="auth-divider"><span>or continue with email</span></div>
           <div className="clerk-frame">
-            <SignIn
-              appearance={{
-                elements: {
-                  rootBox: 'clerk-root-box',
-                  card: 'clerk-card-box',
-                  headerTitle: 'clerk-title',
-                  headerSubtitle: 'clerk-subtitle',
-                  socialButtons: 'clerk-social-hidden',
-                  socialButtonsBlockButton: 'clerk-social-hidden',
-                  socialButtonsIconButton: 'clerk-social-hidden',
-                  formButtonPrimary: 'clerk-primary-button',
-                  footerActionLink: 'clerk-link',
-                },
-              }}
-            />
+            <EmailAuth />
           </div>
           <div className="auth-divider"><span>or use demo last</span></div>
           <DemoLogin />
