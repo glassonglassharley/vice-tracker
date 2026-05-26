@@ -24,15 +24,26 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const { vice_id, date, quantity, price_per_unit } = req.body;
-    if (!vice_id || !date) return res.status(400).json({ error: 'vice_id and date required' });
-    if (!await verifyViceOwnership(vice_id, req.auth.userId))
+    const viceId = Number(vice_id);
+    const entryQuantity = Number(quantity ?? 0);
+    const entryPrice = Number(price_per_unit ?? 0);
+
+    if (!viceId || !date) return res.status(400).json({ error: 'vice_id and date required' });
+    if (!Number.isFinite(entryQuantity) || entryQuantity < 0)
+      return res.status(400).json({ error: 'quantity must be a non-negative number' });
+    if (!Number.isFinite(entryPrice) || entryPrice < 0)
+      return res.status(400).json({ error: 'price_per_unit must be a non-negative number' });
+    if (!await verifyViceOwnership(viceId, req.auth.userId))
       return res.status(403).json({ error: 'Forbidden' });
 
+    // Manual saves are always new entry rows. Do not add an upsert clause here:
+    // the entries table intentionally has no unique (vice_id, date) constraint
+    // so users can log multiple same-day entries without overwriting history.
     const r = await pool.query(
       `INSERT INTO entries (vice_id, date, quantity, price_per_unit)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [vice_id, date, quantity ?? 0, price_per_unit]
+      [viceId, date, entryQuantity, entryPrice]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) { next(err); }
