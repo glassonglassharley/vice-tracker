@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { ClerkProvider, SignedIn, SignedOut, UserButton, useClerk, useSignIn, useSignUp, useUser } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -801,19 +801,60 @@ function SignedInContent() {
   return <AuthenticatedApp />;
 }
 
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error('App render error:', error, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: '2rem', fontFamily: 'monospace', color: '#f66', background: '#111', minHeight: '100vh', whiteSpace: 'pre-wrap' }}>
+          <h2 style={{ color: '#fff', marginBottom: '1rem' }}>Something went wrong</h2>
+          <p style={{ color: '#aaa', marginBottom: '1rem' }}>Open the browser console for more detail.</p>
+          <pre style={{ color: '#f99', fontSize: '13px' }}>{String(this.state.error)}</pre>
+          <button
+            style={{ marginTop: '1.5rem', padding: '0.5rem 1rem', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '6px', cursor: 'pointer' }}
+            onClick={() => this.setState({ error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  if (!PUBLISHABLE_KEY) {
+    return (
+      <div style={{ padding: '2rem', fontFamily: 'monospace', color: '#f66', background: '#111', minHeight: '100vh' }}>
+        <h2 style={{ color: '#fff' }}>Configuration error</h2>
+        <p style={{ color: '#aaa' }}>VITE_CLERK_PUBLISHABLE_KEY is not set. Add it to your Vercel environment variables.</p>
+      </div>
+    );
+  }
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-      <DemoAuthProvider>
-        <BrowserRouter>
-          <SignedOut>
-            <SignedOutContent />
-          </SignedOut>
-          <SignedIn>
-            <SignedInContent />
-          </SignedIn>
-        </BrowserRouter>
-      </DemoAuthProvider>
-    </ClerkProvider>
+    <AppErrorBoundary>
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+        <DemoAuthProvider>
+          <BrowserRouter>
+            <SignedOut>
+              <SignedOutContent />
+            </SignedOut>
+            <SignedIn>
+              <SignedInContent />
+            </SignedIn>
+          </BrowserRouter>
+        </DemoAuthProvider>
+      </ClerkProvider>
+    </AppErrorBoundary>
   );
 }
