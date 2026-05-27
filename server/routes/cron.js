@@ -1,5 +1,4 @@
 const express = require('express');
-const webpush = require('web-push');
 const router = express.Router();
 const pool = require('../db');
 
@@ -14,13 +13,20 @@ function authCron(req, res, next) {
   return res.status(401).json({ error: 'Unauthorized cron request' });
 }
 
+// Returns the configured webpush instance, or null if VAPID keys are missing/web-push fails to load.
 function configureWebPush() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return false;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:notifications@vice-tracker.local';
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  return true;
+  if (!publicKey || !privateKey) return null;
+  try {
+    const webpush = require('web-push');
+    const subject = process.env.VAPID_SUBJECT || 'mailto:notifications@vice-tracker.local';
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    return webpush;
+  } catch (err) {
+    console.error('web-push load failed:', err.message);
+    return null;
+  }
 }
 
 function localDateParts(timezone, date = new Date()) {
@@ -59,8 +65,8 @@ async function zeroFillUserDay(userId, dateString) {
   return result.rowCount || 0;
 }
 
-async function sendReminder(user, pushReady) {
-  if (!pushReady || !user.nightly_reminders_enabled) return 0;
+async function sendReminder(user, webpush) {
+  if (!webpush || !user.nightly_reminders_enabled) return 0;
 
   const subscriptions = await pool.query(
     'SELECT id, endpoint, p256dh, auth FROM notification_subscriptions WHERE user_id = $1',
@@ -95,7 +101,7 @@ async function sendReminder(user, pushReady) {
 
 router.all('/nightly', authCron, async (req, res, next) => {
   try {
-    const pushReady = configureWebPush();
+    const webpush = configureWebPush();
     const users = await pool.query(
       `SELECT id, timezone, nightly_reminders_enabled, last_nightly_reminder_date, last_zero_fill_date
        FROM users`
@@ -120,7 +126,7 @@ router.all('/nightly', authCron, async (req, res, next) => {
         local.hour === REMINDER_HOUR &&
         String(user.last_nightly_reminder_date || '').slice(0, 10) !== local.date
       ) {
-        remindersSent += await sendReminder(user, pushReady);
+        remindersSent += await sendReminder(user, webpush);
         await pool.query('UPDATE users SET last_nightly_reminder_date = $1 WHERE id = $2', [local.date, user.id]);
       }
 
@@ -132,7 +138,7 @@ router.all('/nightly', authCron, async (req, res, next) => {
       users_checked: touchedUsers.length,
       zero_entries_created: zeroEntriesCreated,
       reminders_sent: remindersSent,
-      push_ready: pushReady,
+      push_ready: Boolean(webpush),
       reminder_hour: REMINDER_HOUR,
     });
   } catch (err) { next(err); }

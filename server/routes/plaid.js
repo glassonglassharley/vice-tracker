@@ -1,19 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { PlaidApi, Configuration, PlaidEnvironments, Products, CountryCode } = require('plaid');
-
-const plaidEnv = process.env.PLAID_ENV || 'sandbox';
-const configuration = new Configuration({
-  basePath: PlaidEnvironments[plaidEnv],
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
-    },
-  },
-});
-const plaid = new PlaidApi(configuration);
 
 // Vice-related Plaid personal_finance_category primary/detailed values
 const VICE_CATEGORIES = new Set([
@@ -44,9 +31,30 @@ function isViceTransaction(tx) {
   return VICE_KEYWORDS.some(k => name.includes(k));
 }
 
+// Lazy-load the plaid module and cache the client so a missing bundle only
+// affects /api/plaid/* routes, not the whole server startup.
+let _plaidClient = null;
+function getPlaidClient() {
+  if (_plaidClient) return _plaidClient;
+  const { PlaidApi, Configuration, PlaidEnvironments } = require('plaid');
+  const plaidEnv = process.env.PLAID_ENV || 'sandbox';
+  _plaidClient = new PlaidApi(new Configuration({
+    basePath: PlaidEnvironments[plaidEnv],
+    baseOptions: {
+      headers: {
+        'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
+        'PLAID-SECRET': process.env.PLAID_SECRET,
+      },
+    },
+  }));
+  return _plaidClient;
+}
+
 // POST /api/plaid/create-link-token
 router.post('/create-link-token', async (req, res, next) => {
   try {
+    const { Products, CountryCode } = require('plaid');
+    const plaid = getPlaidClient();
     const response = await plaid.linkTokenCreate({
       user: { client_user_id: String(req.auth.userId) },
       client_name: 'Vice Spending',
@@ -64,6 +72,7 @@ router.post('/create-link-token', async (req, res, next) => {
 // POST /api/plaid/exchange-token
 router.post('/exchange-token', async (req, res, next) => {
   try {
+    const plaid = getPlaidClient();
     const { public_token, institution_name } = req.body;
     if (!public_token) return res.status(400).json({ error: 'public_token required' });
 
@@ -95,6 +104,7 @@ router.post('/exchange-token', async (req, res, next) => {
 // POST /api/plaid/sync  — returns last 90 days of vice-related transactions
 router.post('/sync', async (req, res, next) => {
   try {
+    const plaid = getPlaidClient();
     const userRow = await pool.query(
       'SELECT id FROM users WHERE clerk_user_id = $1', [req.auth.userId]
     );

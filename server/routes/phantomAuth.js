@@ -1,6 +1,5 @@
 const express = require('express');
 const crypto = require('crypto');
-const { PublicKey } = require('@solana/web3.js');
 const pool = require('../db');
 
 const router = express.Router();
@@ -25,6 +24,7 @@ const ED25519_DER_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 
 function verifySignature(publicKeyBase58, message, signatureBase64) {
   try {
+    const { PublicKey } = require('@solana/web3.js');
     const pk = new PublicKey(publicKeyBase58);
     const keyDer = Buffer.concat([ED25519_DER_PREFIX, Buffer.from(pk.toBytes())]);
     const pubKeyObj = crypto.createPublicKey({ key: keyDer, format: 'der', type: 'spki' });
@@ -52,7 +52,10 @@ router.post('/', async (req, res, next) => {
     }
 
     // Validate public key format before verifying
-    try { new PublicKey(publicKey); } catch {
+    try {
+      const { PublicKey } = require('@solana/web3.js');
+      new PublicKey(publicKey);
+    } catch {
       return res.status(400).json({ error: 'Invalid public key.' });
     }
 
