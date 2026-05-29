@@ -63,10 +63,11 @@ const ASSETS = [
 ];
 
 const MILESTONES = [
-  { days: 30,   label: '1 Month',  sub: '30 days clean' },
-  { days: 90,   label: '3 Months', sub: '90 days clean' },
-  { days: 365,  label: '1 Year',   sub: '365 days clean' },
-  { days: 1825, label: '5 Years',  sub: '1,825 days clean' },
+  { days: 365,   label: '1 Year',   sub: '365 days clean' },
+  { days: 1825,  label: '5 Years',  sub: '1,825 days clean' },
+  { days: 3650,  label: '10 Years', sub: '3,650 days clean' },
+  { days: 7300,  label: '20 Years', sub: '7,300 days clean' },
+  { days: 10950, label: '30 Years', sub: '10,950 days clean' },
 ];
 
 const BUYS = [
@@ -137,7 +138,7 @@ export default function Savings() {
   const { vices, theme } = useViceContext();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
-  const [horizon, setHorizon] = useState(365);
+  const [horizon, setHorizon] = useState(1825);
   const [customGoals, setCustomGoals] = useState(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -372,7 +373,14 @@ export default function Savings() {
           ))}
         </div>
         {loading ? (
-          <div className="loading">Loading…</div>
+          <div style={{ padding: '12px 0' }}>
+            <div className="skeleton" style={{ height: 90, width: 300, borderRadius: 8, marginBottom: 16 }} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div className="skeleton" style={{ height: 34, width: 100, borderRadius: 999 }} />
+              <div className="skeleton" style={{ height: 34, width: 100, borderRadius: 999 }} />
+              <div className="skeleton" style={{ height: 34, width: 100, borderRadius: 999 }} />
+            </div>
+          </div>
         ) : (
           <>
             <div className="sv-amount-row">
@@ -548,7 +556,7 @@ export default function Savings() {
         </div>
       )}
 
-      {/* ── Milestone cards ── */}
+      {/* ── Milestone cards (time horizon) ── */}
       <div className="sv-section">
         <div className="sv-section-head">
           <span className="sv-section-title">Milestones</span>
@@ -569,6 +577,32 @@ export default function Savings() {
           ))}
         </div>
       </div>
+
+      {/* ── Savings target milestones ── */}
+      {!loading && perDay > 0 && (
+        <div className="sv-section">
+          <div className="sv-section-head">
+            <span className="sv-section-title">Savings targets</span>
+            <span className="sv-section-sub">How long until you reach each level</span>
+          </div>
+          <div className="sv-ms-grid">
+            {[1000, 5000, 10000, 25000, 50000].map(target => {
+              const daysNeeded = perDay > 0 ? Math.ceil(target / perDay) : Infinity;
+              const reached = projected >= target;
+              const reachDate = new Date(Date.now() + daysNeeded * 86400000)
+                .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+              return (
+                <div key={target} className={`sv-ms-card${reached ? ' active' : ''}`}>
+                  <div className="sv-ms-label">{reached ? '✓ Reached' : `~${daysNeeded < 365 ? Math.round(daysNeeded) + ' days' : (daysNeeded / 365).toFixed(1) + ' yrs'}`}</div>
+                  <div className="sv-ms-amount">{fmt$0(target)}</div>
+                  {!reached && <div className="sv-ms-date">by {reachDate}</div>}
+                  <div className="sv-ms-sub">{target >= 10000 ? 'Significant milestone' : target >= 5000 ? 'Major savings' : 'First milestone'}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
     </main>
   );
