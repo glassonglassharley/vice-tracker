@@ -17,17 +17,28 @@ export default function Partners() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [flash, setFlash] = useState('');
-  const [flashErr, setFlashErr] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [activeChatId, setActiveChatId] = useState(null);
   const [chatMessages, setChatMessages] = useState({});
   const [chatDrafts, setChatDrafts] = useState({});
   const [chatLoading, setChatLoading] = useState({});
   const [chatSending, setChatSending] = useState({});
+  const [acceptingId, setAcceptingId] = useState(null);
+  const [decliningId, setDecliningId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+  const [challengingId, setChallengingId] = useState(null);
+  const [sendingReqId, setSendingReqId] = useState(null);
 
-  const showFlash = (msg, isErr = false) => {
-    if (isErr) { setFlashErr(msg); setTimeout(() => setFlashErr(''), 3500); }
-    else { setFlash(msg); setTimeout(() => setFlash(''), 3000); }
+  const showSuccess = msg => {
+    setSuccessMsg(msg);
+    setErrorMsg('');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const showError = msg => {
+    setErrorMsg(msg);
+    setTimeout(() => setErrorMsg(''), 4000);
   };
 
   const load = useCallback(() => {
@@ -60,33 +71,66 @@ export default function Partners() {
   }, [searchQ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendRequest = async (userId) => {
+    setSendingReqId(userId);
     try {
       await api('/api/partners/request', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
-      showFlash('Partner request sent!');
+      showSuccess('Partner request sent!');
       setSearchResults(r => r.map(u => u.id === userId ? { ...u, relationship: 'pending' } : u));
-    } catch (e) { showFlash(e.message, true); }
+    } catch (e) {
+      showError(e.message || 'Could not send request.');
+    } finally {
+      setSendingReqId(null);
+    }
   };
 
   const acceptRequest = async (friendshipId) => {
+    setAcceptingId(friendshipId);
     try {
       await api(`/api/partners/${friendshipId}/accept`, { method: 'PUT' });
+      showSuccess('Partner accepted!');
       load();
-    } catch (e) { showFlash(e.message, true); }
+    } catch (e) {
+      showError(e.message || 'Could not accept request.');
+    } finally {
+      setAcceptingId(null);
+    }
   };
 
-  const removePartner = async (friendshipId) => {
+  const declineRequest = async (friendshipId) => {
+    setDecliningId(friendshipId);
     try {
       await api(`/api/partners/${friendshipId}`, { method: 'DELETE' });
       load();
-    } catch (e) { showFlash(e.message, true); }
+    } catch (e) {
+      showError(e.message || 'Could not decline request.');
+    } finally {
+      setDecliningId(null);
+    }
+  };
+
+  const removePartner = async (friendshipId) => {
+    setRemovingId(friendshipId);
+    try {
+      await api(`/api/partners/${friendshipId}`, { method: 'DELETE' });
+      load();
+    } catch (e) {
+      showError(e.message || 'Could not remove partner.');
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   const sendChallenge = async (partnerId) => {
+    setChallengingId(partnerId);
     try {
       await api(`/api/partners/${partnerId}/challenge`, { method: 'POST' });
-      showFlash('Challenge sent! May the cleanest month win 🏆');
+      showSuccess('Challenge sent! May the cleanest month win 🏆');
       load();
-    } catch (e) { showFlash(e.message, true); }
+    } catch (e) {
+      showError(e.message || 'Could not send challenge.');
+    } finally {
+      setChallengingId(null);
+    }
   };
 
   const loadChat = async (partnerId) => {
@@ -95,7 +139,7 @@ export default function Partners() {
       const messages = await api(`/api/partners/${partnerId}/messages`);
       setChatMessages(prev => ({ ...prev, [partnerId]: messages }));
     } catch (e) {
-      showFlash(e.message || 'Could not load chat.', true);
+      showError(e.message || 'Could not load chat.');
     } finally {
       setChatLoading(prev => ({ ...prev, [partnerId]: false }));
     }
@@ -126,7 +170,7 @@ export default function Partners() {
       }));
       setChatDraft(partnerId, '');
     } catch (e) {
-      showFlash(e.message || 'Could not send message.', true);
+      showError(e.message || 'Could not send message.');
     } finally {
       setChatSending(prev => ({ ...prev, [partnerId]: false }));
     }
@@ -146,22 +190,30 @@ export default function Partners() {
   }
 
   const thisMonthLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const hasLeaderboard = leaderboard.length > 1; // need at least 2 to be interesting
+  const hasLeaderboard = leaderboard.length > 1;
 
   return (
     <main className="main">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Accountability Partners</h1>
-          <p className="page-subtitle">Add friends to keep each other on track with your spending goals.</p>
-        </div>
+      <div className="crumbs">
+        <span>Vice Spending</span>
+        <span className="sep">›</span>
+        <span className="here">Partners</span>
       </div>
 
-      {flashErr && <div className="ap-flash ap-flash-err">{flashErr}</div>}
-      {flash    && <div className="ap-flash ap-flash-ok">{flash}</div>}
+      <div className="page-title">Accountability Partners</div>
 
-      {/* ── This Month Leaderboard ── */}
-      {hasLeaderboard && (
+      {errorMsg && <div className="inline-error" style={{ marginBottom: 16 }}>{errorMsg}</div>}
+      {successMsg && <div className="inline-success" style={{ marginBottom: 16 }}>✓ {successMsg}</div>}
+
+      {/* ── Leaderboard ── */}
+      {loading ? (
+        <div className="panel">
+          <div className="panel-head"><div className="skeleton skeleton-text" style={{ width: 160 }} /></div>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="skeleton skeleton-row" style={{ marginBottom: 6 }} />
+          ))}
+        </div>
+      ) : hasLeaderboard && (
         <div className="panel">
           <div className="panel-head">
             <span className="panel-title">
@@ -189,7 +241,6 @@ export default function Partners() {
                   <div className="ap-vices">
                     {(row.vices || []).slice(0, 5).map((v, i) => <span key={i}>{v.emoji}</span>)}
                   </div>
-                  {/* Last month winner badge */}
                   {row.last_month_winner === 'them' && (
                     <div className="lb-trophy">🏆 Won last month</div>
                   )}
@@ -206,8 +257,14 @@ export default function Partners() {
                       : <button
                           className="btn ghost"
                           style={{ fontSize: 11, padding: '5px 10px', whiteSpace: 'nowrap' }}
+                          disabled={challengingId === row.id}
                           onClick={() => sendChallenge(row.id)}
-                        >Challenge</button>
+                        >
+                          {challengingId === row.id
+                            ? <><div className="btn-spinner" />Sending…</>
+                            : 'Challenge'
+                          }
+                        </button>
                   )}
                 </span>
               </div>
@@ -221,16 +278,23 @@ export default function Partners() {
         <div className="panel-head">
           <span className="panel-title">Find a partner <span className="small">by name</span></span>
         </div>
-        <input
-          className="form-input"
-          placeholder="Search by name…"
-          value={searchQ}
-          onChange={e => setSearchQ(e.target.value)}
-          style={{ width: '100%', marginBottom: 10 }}
-        />
-        {searching && <div className="loading">Searching…</div>}
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <input
+            className="form-input"
+            placeholder="Search by name…"
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            style={{ width: '100%', paddingRight: searching ? 36 : undefined }}
+          />
+          {searching && (
+            <div className="btn-spinner" style={{
+              position: 'absolute', right: 12, top: '50%',
+              transform: 'translateY(-50%)', margin: 0,
+            }} />
+          )}
+        </div>
         {!searching && searchQ.trim() && !searchResults.length && (
-          <div className="loading">No users found</div>
+          <div className="ap-no-results">No users found for "{searchQ}"</div>
         )}
         {searchResults.length > 0 && (
           <div className="ap-search-results">
@@ -241,8 +305,16 @@ export default function Partners() {
                 {u.relationship === 'accepted' && <span className="ap-tag">Partner</span>}
                 {u.relationship === 'pending' && <span className="ap-tag muted">Requested</span>}
                 {!u.relationship && (
-                  <button className="btn" style={{ fontSize: 12, padding: '7px 13px' }} onClick={() => sendRequest(u.id)}>
-                    Add partner
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12, padding: '7px 13px' }}
+                    disabled={sendingReqId === u.id}
+                    onClick={() => sendRequest(u.id)}
+                  >
+                    {sendingReqId === u.id
+                      ? <><div className="btn-spinner" />Sending…</>
+                      : 'Add partner'
+                    }
                   </button>
                 )}
               </div>
@@ -255,7 +327,10 @@ export default function Partners() {
       {pending.length > 0 && (
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">Incoming requests <span className="small">{pending.length}</span></span>
+            <span className="panel-title">
+              Incoming requests
+              <span className="ap-count-badge">{pending.length}</span>
+            </span>
           </div>
           <div className="ap-list">
             {pending.map(u => (
@@ -268,8 +343,28 @@ export default function Partners() {
                   )}
                 </div>
                 <div className="ap-actions">
-                  <button className="btn" style={{ fontSize: 12, padding: '7px 13px' }} onClick={() => acceptRequest(u.friendship_id)}>Accept</button>
-                  <button className="btn ghost" style={{ fontSize: 12, padding: '7px 13px' }} onClick={() => removePartner(u.friendship_id)}>Decline</button>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12, padding: '7px 13px' }}
+                    disabled={acceptingId === u.friendship_id || decliningId === u.friendship_id}
+                    onClick={() => acceptRequest(u.friendship_id)}
+                  >
+                    {acceptingId === u.friendship_id
+                      ? <><div className="btn-spinner" />Accepting…</>
+                      : 'Accept'
+                    }
+                  </button>
+                  <button
+                    className="btn ghost"
+                    style={{ fontSize: 12, padding: '7px 13px' }}
+                    disabled={acceptingId === u.friendship_id || decliningId === u.friendship_id}
+                    onClick={() => declineRequest(u.friendship_id)}
+                  >
+                    {decliningId === u.friendship_id
+                      ? <><div className="btn-spinner" />Declining…</>
+                      : 'Decline'
+                    }
+                  </button>
                 </div>
               </div>
             ))}
@@ -280,15 +375,22 @@ export default function Partners() {
       {/* ── Active partners ── */}
       <div className="panel">
         <div className="panel-head">
-          <span className="panel-title">Your partners <span className="small">{partners.length}</span></span>
+          <span className="panel-title">
+            Your partners
+            {!loading && <span className="ap-count-badge">{partners.length}</span>}
+          </span>
         </div>
         {loading ? (
-          <div className="loading">Loading…</div>
+          <div className="ap-skeleton-cards">
+            {[0, 1].map(i => (
+              <div key={i} className="skeleton skeleton-card" style={{ height: 130 }} />
+            ))}
+          </div>
         ) : partners.length === 0 ? (
-          <div className="empty-state" style={{ padding: '32px 0' }}>
-            <div className="empty-icon">🤝</div>
-            <h2>No partners yet</h2>
-            <p>Search above and send someone a partner request.</p>
+          <div className="ap-empty">
+            <div className="ap-empty-icon">🤝</div>
+            <div className="ap-empty-title">No partners yet</div>
+            <div className="ap-empty-sub">Search above to find a friend and send a partner request.</div>
           </div>
         ) : (
           <div className="ap-cards">
@@ -321,8 +423,14 @@ export default function Partners() {
                       className="btn ghost"
                       type="button"
                       style={{ fontSize: 11, padding: '5px 10px' }}
+                      disabled={removingId === p.friendship_id}
                       onClick={() => removePartner(p.friendship_id)}
-                    >Remove</button>
+                    >
+                      {removingId === p.friendship_id
+                        ? <><div className="btn-spinner" />Removing…</>
+                        : 'Remove'
+                      }
+                    </button>
                   </div>
                 </div>
                 <div className="ap-stats">
@@ -340,14 +448,17 @@ export default function Partners() {
                     <div className="ap-chat-head">
                       <span>Chat with {p.name}</span>
                       <button className="ap-chat-refresh" type="button" onClick={() => loadChat(p.id)} disabled={chatLoading[p.id]}>
-                        {chatLoading[p.id] ? 'Refreshing…' : 'Refresh'}
+                        {chatLoading[p.id] ? <><div className="btn-spinner" />Refreshing…</> : 'Refresh'}
                       </button>
                     </div>
                     <div className="ap-chat-messages" aria-live="polite">
                       {chatLoading[p.id] && !chatMessages[p.id] ? (
-                        <div className="ap-chat-empty">Loading chat…</div>
+                        <div className="ap-chat-empty">
+                          <div className="btn-spinner" style={{ margin: '0 auto 8px' }} />
+                          Loading chat…
+                        </div>
                       ) : (chatMessages[p.id] || []).length === 0 ? (
-                        <div className="ap-chat-empty">No messages yet. Send a quick check-in.</div>
+                        <div className="ap-chat-empty">No messages yet. Send a quick check-in. 👋</div>
                       ) : (
                         chatMessages[p.id].map(message => (
                           <div key={message.id} className={`ap-chat-bubble ${message.is_me ? 'me' : 'them'}`}>
@@ -372,7 +483,10 @@ export default function Partners() {
                         onChange={event => setChatDraft(p.id, event.target.value)}
                       />
                       <button className="btn" type="submit" disabled={chatSending[p.id] || !String(chatDrafts[p.id] || '').trim()}>
-                        {chatSending[p.id] ? 'Sending…' : 'Send'}
+                        {chatSending[p.id]
+                          ? <><div className="btn-spinner" />Sending…</>
+                          : 'Send'
+                        }
                       </button>
                     </form>
                   </div>
@@ -387,7 +501,10 @@ export default function Partners() {
       {sent.length > 0 && (
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">Sent requests <span className="small">{sent.length}</span></span>
+            <span className="panel-title">
+              Sent requests
+              <span className="ap-count-badge">{sent.length}</span>
+            </span>
           </div>
           <div className="ap-list">
             {sent.map(u => (
@@ -397,7 +514,17 @@ export default function Partners() {
                   <div className="ap-name">{u.name}</div>
                   <div className="ap-meta">Awaiting response</div>
                 </div>
-                <button className="btn ghost" style={{ fontSize: 12, padding: '7px 13px' }} onClick={() => removePartner(u.friendship_id)}>Cancel</button>
+                <button
+                  className="btn ghost"
+                  style={{ fontSize: 12, padding: '7px 13px' }}
+                  disabled={removingId === u.friendship_id}
+                  onClick={() => removePartner(u.friendship_id)}
+                >
+                  {removingId === u.friendship_id
+                    ? <><div className="btn-spinner" />Cancelling…</>
+                    : 'Cancel'
+                  }
+                </button>
               </div>
             ))}
           </div>
