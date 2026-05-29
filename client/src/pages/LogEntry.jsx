@@ -177,27 +177,38 @@ export default function LogEntry() {
             </div>
 
             {Number(quantity) > 0 && Number(totalSpent) > 0 && (
-              <div className="log-total">
-                Total: <strong>{fmt$(Number(totalSpent))}</strong>
+              <div className="log-calc-row">
+                <div className="log-calc-item">
+                  <span className="log-calc-label">Total</span>
+                  <strong className="log-calc-val text-money">{fmt$(Number(totalSpent))}</strong>
+                </div>
+                <div className="log-calc-divider" />
+                <div className="log-calc-item">
+                  <span className="log-calc-label">Per {activeUnitLabel}</span>
+                  <strong className="log-calc-val">{fmt$(Number(totalSpent) / Number(quantity))}</strong>
+                </div>
               </div>
             )}
 
             <div className="log-actions">
-              <button type="submit" className="btn" disabled={saving || !selectedViceId}>
-                {saving ? 'Saving…' : editingEntry ? 'Update Entry' : Number(quantity) === 0 ? 'Log Clean Day' : 'Save Entry'}
+              <button type="submit" className="btn" disabled={saving || !selectedViceId} style={{ minWidth: 140 }}>
+                {saving
+                  ? <><div className="btn-spinner" />{editingEntry ? 'Updating…' : 'Saving…'}</>
+                  : editingEntry ? 'Update Entry' : Number(quantity) === 0 ? '🌿 Log Clean Day' : 'Save Entry'
+                }
               </button>
               {editingEntry && (
                 <button type="button" className="btn ghost" onClick={cancelEdit} disabled={saving}>
-                  Cancel edit
+                  Cancel
                 </button>
               )}
             </div>
 
-            {errorMsg && <div className="form-error">{errorMsg}</div>}
+            {errorMsg && <div className="inline-error">{errorMsg}</div>}
 
             {savedMsg && (
-              <div className={`save-msg${savedMsg.includes('Clean') ? ' save-msg-clean' : ''}`}>
-                {savedMsg}
+              <div className={`inline-success`}>
+                {savedMsg.includes('Clean') ? '🌿 ' : '✓ '}{savedMsg}
               </div>
             )}
           </form>

@@ -557,6 +557,15 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .log-total { font-size: 14px; color: var(--ink-3); padding: 4px 0; }
 .save-msg { margin-top: 4px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .save-msg-clean { color: var(--money); }
+.log-calc-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--paper-3); border: 1px solid var(--rule);
+}
+.log-calc-item { display: flex; flex-direction: column; gap: 2px; }
+.log-calc-label { font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.log-calc-val { font-family: var(--mono); font-size: 18px; font-variant-numeric: tabular-nums; }
+.log-calc-divider { width: 1px; height: 32px; background: var(--rule-2); }
 
 /* ── Entry list ──────────────────────────────────── */
 .entry-list { display: flex; flex-direction: column; gap: 6px; }
