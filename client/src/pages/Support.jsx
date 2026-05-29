@@ -2,18 +2,22 @@ import { useState } from 'react';
 
 const STEPS = [
   {
+    icon: '🎯',
     title: 'Add your vices',
     body: 'Go to the Vices tab and add the habits you want to track — coffee, cigarettes, alcohol, takeout, or anything you spend money on.',
   },
   {
+    icon: '📝',
     title: 'Log daily entries',
-    body: 'Each day, open the Dashboard and log how much you consumed. Enter 0 to mark a clean day — your streak will grow automatically.',
+    body: 'Each day, open the Dashboard and log how much you consumed. Enter 0 to mark a clean day — your streak grows automatically.',
   },
   {
+    icon: '📈',
     title: 'Watch your savings grow',
     body: 'The Savings tab shows how much you\'ve avoided spending and projects what that money could become if invested over time.',
   },
   {
+    icon: '🤝',
     title: 'Add accountability partners',
     body: 'Invite friends from the Partners tab. Once they accept, you can each see the other\'s clean days and monthly totals to stay motivated.',
   },
@@ -38,7 +42,7 @@ const FAQS = [
   },
   {
     q: 'Can I edit or delete a past entry?',
-    a: 'Yes. On the Dashboard, scroll to the entry list and click Edit next to any entry to change the quantity or price.',
+    a: 'Yes. On the Log Entry page or Dashboard, click Edit next to any entry to change the quantity or price.',
   },
   {
     q: 'Does demo mode save my data?',
@@ -50,15 +54,22 @@ const FAQS = [
   },
 ];
 
+const TRUST_POINTS = [
+  { icon: '🔒', label: 'Your data is private', desc: 'Partners only see your clean-day count and monthly total — never individual entries.' },
+  { icon: '📵', label: 'No ads, ever', desc: 'Vice to Value is funded by users, not advertisers. Your habits are never sold or shared.' },
+  { icon: '🗑️', label: 'Delete anytime', desc: 'Request full account deletion via email and your data is gone within 48 hours.' },
+];
+
 export default function Support() {
   return (
     <main className="main">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">FAQ</h1>
-          <p className="page-subtitle">Answers to common questions and how to get help.</p>
-        </div>
+      <div className="crumbs">
+        <span>Vice Spending</span>
+        <span className="sep">›</span>
+        <span className="here">Support</span>
       </div>
+
+      <div className="page-title">Support & FAQ</div>
 
       {/* How it works */}
       <div className="panel">
@@ -68,7 +79,10 @@ export default function Support() {
         <div className="sup-steps">
           {STEPS.map((s, i) => (
             <div key={i} className="sup-step">
-              <div className="sup-step-num">{i + 1}</div>
+              <div className="sup-step-icon-wrap">
+                <div className="sup-step-num">{i + 1}</div>
+                <div className="sup-step-icon">{s.icon}</div>
+              </div>
               <div>
                 <div className="sup-step-title">{s.title}</div>
                 <div className="sup-step-body">{s.body}</div>
@@ -81,7 +95,7 @@ export default function Support() {
       {/* FAQ */}
       <div className="panel">
         <div className="panel-head">
-          <span className="panel-title">FAQ</span>
+          <span className="panel-title">Frequently asked questions</span>
         </div>
         <div className="faq-list">
           {FAQS.map((item, i) => (
@@ -90,15 +104,30 @@ export default function Support() {
         </div>
       </div>
 
-      {/* Contact */}
+      {/* Privacy & trust */}
       <div className="panel">
         <div className="panel-head">
-          <span className="panel-title">Still need help?</span>
+          <span className="panel-title">Your privacy</span>
         </div>
-        <p style={{ fontSize: 14, color: 'var(--ink-3)', marginBottom: 18, lineHeight: 1.6 }}>
+        <div className="sup-trust-grid">
+          {TRUST_POINTS.map((t, i) => (
+            <div key={i} className="sup-trust-card">
+              <div className="sup-trust-icon">{t.icon}</div>
+              <div className="sup-trust-label">{t.label}</div>
+              <div className="sup-trust-desc">{t.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div className="panel sup-contact-panel">
+        <div className="sup-contact-icon">💬</div>
+        <div className="sup-contact-title">Still need help?</div>
+        <div className="sup-contact-sub">
           Send us an email and we'll get back to you within 24 hours.
-        </p>
-        <a className="btn" href="mailto:support@vicespending.com">
+        </div>
+        <a className="btn" href="mailto:support@vicespending.com" style={{ marginTop: 20 }}>
           Email support
         </a>
       </div>
@@ -110,11 +139,13 @@ function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`faq-item${open ? ' open' : ''}`}>
-      <button className="faq-q" onClick={() => setOpen(o => !o)}>
+      <button className="faq-q" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         <span>{q}</span>
-        <span className="faq-chevron">{open ? '−' : '+'}</span>
+        <span className="faq-chevron" aria-hidden="true" />
       </button>
-      {open && <div className="faq-a">{a}</div>}
+      <div className="faq-a-wrap">
+        <div className="faq-a">{a}</div>
+      </div>
     </div>
   );
 }
