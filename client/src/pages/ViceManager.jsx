@@ -213,8 +213,8 @@ function ViceCard({ vice, stats, onUpdate, onDelete }) {
             ))}
           </div>
           <div className="edit-actions">
-            <button className="btn btn-primary" onClick={handleSave}>Save changes</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
+            <button className="btn" onClick={handleSave}>Save changes</button>
+            <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -229,11 +229,14 @@ export default function ViceManager() {
   const { loadVices: ctxLoadVices } = useViceContext();
   const [vices, setVices] = useState([]);
   const [viceStats, setViceStats] = useState({});
+  const [vicesLoading, setVicesLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
+  const [updateError, setUpdateError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [addForm, setAddForm] = useState({
     name: '', unit_label: '', default_price: '', emoji: '🔴', category: 'Other', monthly_budget: ''
   });
@@ -242,6 +245,7 @@ export default function ViceManager() {
   const loadVices = useCallback(async () => {
     const data = await apiRef.current('/api/vices');
     setVices(data);
+    setVicesLoading(false);
     const statsMap = {};
     await Promise.all(data.map(async v => {
       try { statsMap[v.id] = await apiRef.current(`/api/stats/${v.id}`); } catch (_) {}
@@ -249,16 +253,17 @@ export default function ViceManager() {
     setViceStats(statsMap);
   }, []);
 
-  useEffect(() => { loadVices().catch(console.error); }, []);
+  useEffect(() => { loadVices().catch(() => setVicesLoading(false)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = async (id, fields) => {
+    setUpdateError('');
     try {
       await apiRef.current(`/api/vices/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
       loadVices();
       ctxLoadVices();
     } catch (err) {
       console.error('Update failed:', err);
-      alert(err.message || 'Could not save changes. Please try again.');
+      setUpdateError(err.message || 'Could not save changes. Please try again.');
     }
   };
 
@@ -270,6 +275,7 @@ export default function ViceManager() {
 
   const handleDeleteConfirm = async () => {
     setDeleting(true);
+    setDeleteError('');
     try {
       await apiRef.current(`/api/vices/${deleteTarget.id}`, { method: 'DELETE' });
       setDeleteTarget(null);
@@ -277,7 +283,7 @@ export default function ViceManager() {
       ctxLoadVices();
     } catch (err) {
       console.error('Delete failed:', err);
-      alert(err.message || 'Could not delete vice. Please try again.');
+      setDeleteError(err.message || 'Could not delete vice. Please try again.');
     } finally {
       setDeleting(false);
     }
@@ -316,11 +322,15 @@ export default function ViceManager() {
         <span className="here">Vices</span>
       </div>
       <div className="page-header">
-        <div className="page-title">Vice Manager</div>
-        <button className="btn btn-primary" onClick={() => setShowAdd(s => !s)}>
-          {showAdd ? 'Cancel' : '+ Add vice'}
+        <div>
+          <div className="page-title">Vice Manager</div>
+          <p className="page-subtitle">Track, edit, and manage everything you spend on.</p>
+        </div>
+        <button className="btn" onClick={() => { setShowAdd(s => !s); setAddError(''); }}>
+          {showAdd ? 'Cancel' : '+ Add Vice'}
         </button>
       </div>
+      {updateError && <div className="inline-error" style={{ marginBottom: 16 }}>{updateError}</div>}
 
       {showAdd && (
         <div className="card add-panel">
@@ -347,24 +357,28 @@ export default function ViceManager() {
               ))}
             </div>
             <div className="edit-actions">
-              <button type="submit" className="btn btn-primary" disabled={addSaving}>
-                {addSaving ? 'Saving…' : 'Add vice'}
+              <button type="submit" className="btn" disabled={addSaving}>
+                {addSaving ? <><div className="btn-spinner" />Saving…</> : 'Add Vice'}
               </button>
             </div>
-            {addError && <div className="form-error" style={{ marginTop: 8 }}>{addError}</div>}
+            {addError && <div className="inline-error" style={{ marginTop: 8 }}>{addError}</div>}
           </form>
         </div>
       )}
 
       <PlaidConnect vices={vices} />
 
-      {vices.length === 0 ? (
+      {vicesLoading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[0,1,2].map(i => <div key={i} className="skeleton skeleton-row" style={{ height: 72 }} />)}
+        </div>
+      ) : vices.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🔴</div>
           <h2>No vices tracked yet</h2>
           <p>Add your first vice to start tracking your spending habits.</p>
           {!showAdd && (
-            <button className="btn btn-primary" style={{ marginTop: 8 }}
+            <button className="btn" style={{ marginTop: 8 }}
               onClick={() => setShowAdd(true)}>
               Add your first vice
             </button>
@@ -391,10 +405,11 @@ export default function ViceManager() {
             </p>
             <div className="modal-actions">
               <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={deleting}>
-                {deleting ? 'Deleting…' : 'Yes, delete'}
+                {deleting ? <><div className="btn-spinner" />Deleting…</> : 'Yes, delete forever'}
               </button>
-              <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn ghost" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>Cancel</button>
             </div>
+            {deleteError && <div className="inline-error" style={{ marginTop: 10 }}>{deleteError}</div>}
           </div>
         </div>
       )}
