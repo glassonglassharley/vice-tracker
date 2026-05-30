@@ -1611,6 +1611,62 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .sup-contact-title { font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 .sup-contact-sub { font-size: 14px; color: var(--ink-3); max-width: 320px; line-height: 1.6; }
 
+/* ── Recent Badges (Dashboard strip) ────────────── */
+.recent-badges-panel { margin-bottom: 22px; }
+.recent-badges-viewall { font-size: 12px; color: var(--money); text-decoration: none; font-family: var(--mono); }
+.recent-badges-viewall:hover { text-decoration: underline; }
+.recent-badges-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.recent-badge-item { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 140px; }
+.recent-badge-emoji { font-size: 24px; flex-shrink: 0; }
+.recent-badge-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+.recent-badge-date { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
+.recent-badge-more { font-size: 12px; color: var(--ink-3); text-decoration: none; font-family: var(--mono); }
+.recent-badge-more:hover { color: var(--money); }
+
+/* ── Badges page ─────────────────────────────────── */
+.bdg-stats-strip {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.bdg-stat {
+  flex: 1; min-width: 100px;
+  padding: 14px 18px; border-radius: 12px;
+  background: var(--paper-2); border: 1px solid var(--rule); text-align: center;
+}
+.bdg-stat-val { font-size: 28px; font-weight: 700; color: var(--money); line-height: 1; letter-spacing: -0.02em; }
+.bdg-stat-label { font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+.bdg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 40px;
+}
+.bdg-card {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 20px 14px 16px; border-radius: 14px;
+  border: 1px solid var(--rule); background: var(--paper-2);
+  transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+  position: relative;
+}
+.bdg-earned {
+  background: color-mix(in srgb, var(--money) 7%, var(--paper-2));
+  border-color: color-mix(in srgb, var(--money) 28%, transparent);
+}
+.bdg-earned:hover { transform: translateY(-2px); border-color: var(--money); box-shadow: 0 6px 20px rgba(0,0,0,0.28); }
+.bdg-locked { opacity: 0.6; }
+.bdg-emoji { font-size: 32px; margin-bottom: 8px; line-height: 1; }
+.bdg-name { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.bdg-desc { font-size: 11px; color: var(--ink-3); line-height: 1.4; margin-bottom: 8px; }
+.bdg-date { font-size: 10px; color: var(--money); font-family: var(--mono); margin-top: auto; }
+.bdg-progress { width: 100%; margin-top: auto; }
+.bdg-bar-track { height: 4px; border-radius: 2px; background: var(--rule); margin-bottom: 4px; overflow: hidden; }
+.bdg-bar-fill { height: 100%; border-radius: 2px; background: var(--money); transition: width 0.3s; }
+.bdg-bar-label { font-size: 10px; color: var(--ink-3); font-family: var(--mono); }
+
+/* ── Badge celeb overlay ─────────────────────────── */
+.badge-celeb-card { text-align: center; }
+.badge-celeb-emojis { font-size: 42px; margin-bottom: 8px; line-height: 1; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.badge-celeb-name { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+
 /* ── Streaks & Badges ────────────────────────────── */
 .badges-section { margin-bottom: 0; }
 

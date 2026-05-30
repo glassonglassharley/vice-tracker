@@ -9,6 +9,7 @@ const Partners          = lazy(() => import('./pages/Partners'));
 const Support           = lazy(() => import('./pages/Support'));
 const Wrapped           = lazy(() => import('./pages/Wrapped'));
 const CompanionOnboarding = lazy(() => import('./pages/CompanionOnboarding'));
+const Badges              = lazy(() => import('./pages/Badges'));
 import { ViceContext, getViceColor } from './ViceContext';
 import { DemoAuthProvider, useApi, useDemoAuth } from './useApi';
 import { VtvLogo, VtvMark } from './Logo';
@@ -18,8 +19,10 @@ const THEMES = ['emerald', 'mint', 'plum', 'noir', 'red', 'orange', 'pink', 'neo
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true },
+  { to: '/log', label: 'Log Today' },
   { to: '/savings', label: 'Savings' },
   { to: '/vices', label: 'Vices' },
+  { to: '/badges', label: '🏅 Badges' },
   { to: '/partners', label: 'Partners' },
   { to: '/support', label: 'FAQ' },
 ];
@@ -282,6 +285,33 @@ function MobileTopBar({ subtitle, mobileOpen, setMobileOpen }) {
   );
 }
 
+function MobileBottomNav() {
+  return (
+    <nav className="mbn" aria-label="Tab navigation">
+      <NavLink to="/" end className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-icon">⌂</span>
+        <span className="mbn-label">Home</span>
+      </NavLink>
+      <NavLink to="/savings" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-icon">◈</span>
+        <span className="mbn-label">Saves</span>
+      </NavLink>
+      <NavLink to="/log" className={({ isActive }) => `mbn-tab mbn-tab-log${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-log-pill">＋</span>
+        <span className="mbn-label">Log</span>
+      </NavLink>
+      <NavLink to="/vices" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-icon">◎</span>
+        <span className="mbn-label">Vices</span>
+      </NavLink>
+      <NavLink to="/partners" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-icon">⊕</span>
+        <span className="mbn-label">Social</span>
+      </NavLink>
+    </nav>
+  );
+}
+
 function AuthenticatedApp() {
   const api = useApi();
   const location = useLocation();
@@ -374,6 +404,7 @@ function AuthenticatedApp() {
             <Route path="/vices" element={<ViceManager />} />
             <Route path="/partners" element={<Partners />} />
             <Route path="/support" element={<Support />} />
+            <Route path="/badges" element={<Badges />} />
             <Route path="/wrapped/:year" element={<Wrapped />} />
           </Routes>
           {companionLoaded && showOnboarding && (
@@ -383,6 +414,7 @@ function AuthenticatedApp() {
             />
           )}
         </Suspense>
+        <MobileBottomNav />
       </div>
     </ViceContext.Provider>
   );
@@ -754,6 +786,168 @@ function DemoLogin() {
   );
 }
 
+function PhoneAuth() {
+  const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  const { isLoaded: signUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
+  const [mode, setMode] = useState('signIn');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const authReady = mode === 'signIn' ? signInLoaded : signUpLoaded;
+
+  const messageFromError = err =>
+    err?.errors?.[0]?.longMessage ||
+    err?.errors?.[0]?.message ||
+    err.message ||
+    'Something went wrong. Please try again.';
+
+  const toE164 = raw => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('1') && digits.length === 11) return `+${digits}`;
+    if (digits.length === 10) return `+1${digits}`;
+    return `+${digits}`;
+  };
+
+  const switchMode = nextMode => {
+    setMode(nextMode);
+    setError('');
+    setCode('');
+    setPendingVerification(false);
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!authReady) return;
+    setError('');
+    setLoading(true);
+    try {
+      if (pendingVerification) {
+        if (mode === 'signIn') {
+          const result = await signIn.attemptFirstFactor({ strategy: 'phone_code', code: code.trim() });
+          if (result.status === 'complete' && result.createdSessionId) {
+            await setSignInActive({ session: result.createdSessionId });
+            return;
+          }
+          setError('Verification did not complete. Try again.');
+        } else {
+          const result = await signUp.attemptPhoneNumberVerification({ code: code.trim() });
+          if (result.status === 'complete' && result.createdSessionId) {
+            await setSignUpActive({ session: result.createdSessionId });
+            return;
+          }
+          setError('Verification did not complete. Try again.');
+        }
+        return;
+      }
+
+      const e164 = toE164(phone);
+      if (mode === 'signIn') {
+        const result = await signIn.create({ identifier: e164 });
+        const phoneFactor = result.supportedFirstFactors?.find(f => f.strategy === 'phone_code');
+        if (!phoneFactor) {
+          setError('Phone sign-in is not enabled for this account. Enable "Phone number" under User & Authentication → Sign-in methods in your Clerk dashboard, or use email sign-in below.');
+          return;
+        }
+        await signIn.prepareFirstFactor({ strategy: 'phone_code', phoneNumberId: phoneFactor.phoneNumberId });
+        setPendingVerification(true);
+      } else {
+        await signUp.create({ phoneNumber: e164 });
+        await signUp.preparePhoneNumberVerification({ strategy: 'phone_code' });
+        setPendingVerification(true);
+      }
+    } catch (err) {
+      const msg = messageFromError(err);
+      if (
+        msg.toLowerCase().includes('phone') ||
+        msg.toLowerCase().includes('sms') ||
+        msg.toLowerCase().includes('not allowed') ||
+        msg.toLowerCase().includes('not enabled')
+      ) {
+        setError(`${msg} — To fix this, go to Clerk Dashboard → User & Authentication → Sign-in methods and enable "Phone number".`);
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="demo-login-card email-login-card">
+      <div className="demo-card-top">
+        <div>
+          <div className="demo-login-title">{mode === 'signIn' ? 'Sign in with phone' : 'Sign up with phone'}</div>
+          <p className="demo-login-copy">
+            {pendingVerification
+              ? `Enter the SMS code sent to ${phone}.`
+              : 'We\'ll send a one-time code to your mobile number.'}
+          </p>
+        </div>
+        <span className="demo-badge">SMS</span>
+      </div>
+      <form onSubmit={handleSubmit} className="demo-login-form">
+        {!pendingVerification ? (
+          <>
+            <label className="form-label" htmlFor="phone-auth-number">Phone number</label>
+            <input
+              id="phone-auth-number"
+              className="form-input"
+              type="tel"
+              value={phone}
+              placeholder="+1 (555) 000-0000"
+              autoComplete="tel"
+              required
+              onChange={e => { setPhone(e.target.value); setError(''); }}
+            />
+          </>
+        ) : (
+          <>
+            <label className="form-label" htmlFor="phone-auth-code">SMS code</label>
+            <input
+              id="phone-auth-code"
+              className="form-input"
+              value={code}
+              placeholder="123456"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              required
+              onChange={e => { setCode(e.target.value); setError(''); }}
+            />
+            <button
+              type="button"
+              className="clerk-link"
+              onClick={() => { setCode(''); setPendingVerification(false); setError(''); }}
+              style={{ marginBottom: 4 }}
+            >
+              ← Change phone number
+            </button>
+          </>
+        )}
+        <button className="btn btn-primary" type="submit" disabled={loading || !authReady}>
+          {loading
+            ? 'Working…'
+            : pendingVerification
+              ? 'Verify SMS code'
+              : 'Send code'}
+        </button>
+        {error && <div className="form-error">{error}</div>}
+      </form>
+      {!pendingVerification && (
+        <button
+          className="clerk-link email-auth-switch"
+          type="button"
+          onClick={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')}
+        >
+          {mode === 'signIn' ? 'Need an account? Sign up with phone' : 'Already have an account? Sign in'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function QuickDemo() {
   const { startDemo } = useDemoAuth();
   const [loading, setLoading] = useState(false);
@@ -849,6 +1043,10 @@ function SignedOutContent() {
           <div className="auth-divider"><span>or continue with email</span></div>
           <div className="clerk-frame">
             <EmailAuth />
+          </div>
+          <div className="auth-divider"><span>or sign in with phone</span></div>
+          <div className="clerk-frame">
+            <PhoneAuth />
           </div>
           <QuickDemo />
         </div>

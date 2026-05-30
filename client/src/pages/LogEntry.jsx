@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '../useApi';
 import { useViceContext } from '../ViceContext';
 import { formatQuantityWithUnit, getUnitLabel } from '../formatUnits';
+import { BadgeCelebOverlay } from './BadgeCelebOverlay';
 
 const fmt$ = n => '$' + Number(n || 0).toFixed(2);
 
@@ -23,6 +24,7 @@ export default function LogEntry() {
   const [errorMsg, setErrorMsg] = useState('');
   const [initialized, setInitialized] = useState(false);
   const [viceStreak, setViceStreak] = useState(null); // { current, best }
+  const [newBadges, setNewBadges] = useState([]);
 
   const loadRecentEntries = viceId => {
     if (!viceId) return Promise.resolve();
@@ -76,6 +78,10 @@ export default function LogEntry() {
       setTimeout(() => setSavedMsg(''), 2500);
       setEditingEntry(null);
       loadRecentEntries(selectedViceId);
+      // Check for newly earned badges after every save
+      api('/api/badges/check', { method: 'POST' })
+        .then(({ newly_earned }) => { if (newly_earned?.length) setNewBadges(newly_earned); })
+        .catch(() => {});
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Could not save entry.');
@@ -264,6 +270,13 @@ export default function LogEntry() {
           )}
         </div>
       </div>
+
+      {newBadges.length > 0 && (
+        <BadgeCelebOverlay
+          badges={newBadges}
+          onDismiss={() => setNewBadges([])}
+        />
+      )}
     </main>
   );
 }

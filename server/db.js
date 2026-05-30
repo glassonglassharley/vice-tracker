@@ -82,6 +82,15 @@ const MIGRATIONS = `
   ALTER TABLE entries ADD COLUMN IF NOT EXISTS note TEXT;
   ALTER TABLE entries DROP CONSTRAINT IF EXISTS entries_vice_id_date_key;
 
+  CREATE TABLE IF NOT EXISTS badges (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_id TEXT NOT NULL,
+    vice_id INTEGER REFERENCES vices(id) ON DELETE SET NULL,
+    earned_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, badge_id)
+  );
+
   CREATE TABLE IF NOT EXISTS plaid_connections (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

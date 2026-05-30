@@ -9,6 +9,7 @@ import { useApi } from '../useApi';
 import { useViceContext } from '../ViceContext';
 import { formatQuantityWithUnit } from '../formatUnits';
 import { GoalsSection, CelebOverlay } from './GoalsSection';
+import { BadgeCelebOverlay } from './BadgeCelebOverlay';
 import CompanionCard from '../companions/CompanionCard';
 import BadgesSection from './BadgesSection';
 import InsightsPanel from '../components/InsightsPanel';
@@ -131,6 +132,7 @@ export default function Dashboard() {
 
   // Challenge notifications
   const [challenges, setChallenges] = useState([]);
+  const [newBadges, setNewBadges] = useState([]);
 
   const moneyColor = typeof document !== 'undefined'
     ? (getComputedStyle(document.body).getPropertyValue('--money').trim() || '#5ec48a')
@@ -139,10 +141,13 @@ export default function Dashboard() {
     ? (getComputedStyle(document.body).getPropertyValue('--ink-3').trim() || '#8e9a85')
     : '#8e9a85';
 
-  // Load goals + challenges once on mount
+  // Load goals + challenges + badge check once on mount
   useEffect(() => {
     apiRef.current('/api/goals').then(setGoals).catch(() => {});
     apiRef.current('/api/partners/challenges').then(setChallenges).catch(() => {});
+    apiRef.current('/api/badges/check', { method: 'POST' })
+      .then(({ newly_earned }) => { if (newly_earned?.length) setNewBadges(newly_earned); })
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Celebrate when a goal is first reached
@@ -328,6 +333,10 @@ export default function Dashboard() {
           onComplete={() => markGoalDone(celebGoal.id)}
           onDismiss={() => setCelebGoal(null)}
         />
+      )}
+
+      {newBadges.length > 0 && (
+        <BadgeCelebOverlay badges={newBadges} onDismiss={() => setNewBadges([])} />
       )}
 
       {companion?.companion_type && (
