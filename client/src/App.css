@@ -139,14 +139,15 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .brand { display: flex; align-items: center; min-width: 0; }
 .brand-logo-svg {
   display: block;
-  width: auto; max-width: 160px; height: 36px;
+  width: auto; max-width: 180px; height: 46px;
   object-fit: contain; object-position: left center;
   flex-shrink: 0;
 }
+/* collapsed sidebar mark — same PNG, let it breathe at natural aspect ratio */
 .brand-mark-svg {
   display: block;
-  width: 36px; height: 36px;
-  object-fit: contain;
+  width: auto; max-width: 48px; height: 36px;
+  object-fit: contain; object-position: left center;
   flex-shrink: 0;
 }
 .brand-sub { font-size: 11px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
@@ -2081,7 +2082,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .hamburger-btn[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
   .mobile-brand { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; }
-  .mobile-brand .brand-mark-svg { display: block; width: 34px; height: 34px; object-fit: contain; }
+  .mobile-brand .brand-mark-svg { display: block; width: auto; max-width: 110px; height: 30px; object-fit: contain; object-position: left center; }
   .mobile-brand-name {
     font-family: var(--serif); font-size: 18px; line-height: 1.05;
     color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2140,7 +2141,6 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .auth-hero-panel { order: 2; overflow: visible; contain: layout paint; }
   .auth-hero-panel::after { display: none; }
   .auth-card-panel { padding: 22px; min-height: auto; contain: layout paint; }
-  .auth-logo-svg { width: 140px; }
   /* Trim hero copy on mobile — h1 is enough context below the login form */
   .auth-hero-copy > p { display: none; }
   .auth-card-panel .form-input { font-size: 16px; }
@@ -2150,7 +2150,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .demo-login-row { grid-template-columns: 1fr; }
   .auth-card-panel .btn { width: 100%; }
   .auth-preview-card { display: none; }
-  .auth-logo-svg { width: auto; max-width: 140px; height: 40px; }
+  .auth-logo-svg { width: auto; max-width: 160px; height: 44px; }
 
   /* Mobile auth gate — show choice buttons before revealing all sign-in methods */
   .mobile-auth-gate { display: flex; flex-direction: column; gap: 12px; }
