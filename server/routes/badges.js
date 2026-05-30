@@ -149,14 +149,32 @@ router.post('/check', async (req, res, next) => {
       const xpAmount = toInsert.reduce((sum, id) => sum + BASE_BADGE_XP + (STREAK_MILESTONE_XP[id] || 0), 0);
       awardXP(userId, xpAmount).then(async xpResult => {
         const prefsRow = await pool.query(
-          'SELECT notif_badge_earned, notif_level_up FROM users WHERE id = $1', [userId]
+          'SELECT notif_badge_earned, notif_level_up, notif_streak_milestone FROM users WHERE id = $1', [userId]
         );
         const prefs = prefsRow.rows[0] || {};
+
+        // Badge earned notifications (all badge types)
         if (prefs.notif_badge_earned !== false) {
           for (const badge of newly_earned) {
             sendPushToUser(userId, { title: '🏅 Badge unlocked!', body: badge.name, url: '/badges' }).catch(() => {});
           }
         }
+
+        // Streak milestone notifications — separate preference, separate message
+        if (prefs.notif_streak_milestone !== false) {
+          const STREAK_DAYS = { streak_3: 3, streak_7: 7, streak_30: 30, streak_100: 100 };
+          for (const badge of newly_earned) {
+            const days = STREAK_DAYS[badge.id];
+            if (days) {
+              sendPushToUser(userId, {
+                title: `🔥 ${days}-day streak!`,
+                body: `You're on fire — ${days} consecutive clean days`,
+                url: '/badges',
+              }).catch(() => {});
+            }
+          }
+        }
+
         if (xpResult?.leveled_up && prefs.notif_level_up !== false) {
           sendPushToUser(userId, {
             title: '⭐ Level up!',

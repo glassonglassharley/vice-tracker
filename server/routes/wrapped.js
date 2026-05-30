@@ -108,7 +108,7 @@ router.get('/:year', async (req, res, next) => {
     const biggestVice = viceList[0];
 
     // ── New stats: XP, badges, most expensive entry, personality ─────────
-    const [xpRow, badgesRow, expEntryRow] = await Promise.all([
+    const [xpRow, badgesRow, expEntryRow, nightOwlRow] = await Promise.all([
       pool.query('SELECT total_xp, level FROM user_xp WHERE user_id = $1', [myId]),
       pool.query(
         `SELECT badge_id FROM badges WHERE user_id = $1 AND earned_at >= $2 AND earned_at < $3`,
@@ -120,14 +120,25 @@ router.get('/:year', async (req, res, next) => {
         WHERE v.user_id = $1 AND e.date >= $2 AND e.date <= $3
         ORDER BY spend DESC LIMIT 1
       `, [myId, yearStart, yearEnd]),
+      pool.query(`
+        SELECT
+          COUNT(CASE WHEN EXTRACT(HOUR FROM e.created_at AT TIME ZONE 'UTC') >= 21
+                       OR EXTRACT(HOUR FROM e.created_at AT TIME ZONE 'UTC') < 5 THEN 1 END)::int AS night_count,
+          COUNT(*)::int AS total_count
+        FROM entries e JOIN vices v ON v.id = e.vice_id
+        WHERE v.user_id = $1 AND e.date >= $2 AND e.date <= $3 AND e.quantity > 0
+      `, [myId, yearStart, yearEnd]),
     ]);
 
     const totalXp       = xpRow.rows[0]?.total_xp ?? 0;
     const highestLevel  = xpRow.rows[0]?.level ?? 1;
     const badgesThisYear = badgesRow.rows.map(r => r.badge_id);
     const mostExpEntry  = expEntryRow.rows[0] || null;
+    const nightCount    = nightOwlRow.rows[0]?.night_count ?? 0;
+    const totalViceEntries = nightOwlRow.rows[0]?.total_count ?? 0;
+    const nightRatio    = totalViceEntries >= 5 ? nightCount / totalViceEntries : 0;
 
-    // Personality type based on patterns
+    // Personality type based on spending + logging patterns
     const totalDays = sortedDates.length;
     const spendDays = sortedDates.filter(d => !byDate[d].allClean).length;
     const cleanRatio = totalDays > 0 ? cleanDays / totalDays : 0;
@@ -139,7 +150,9 @@ router.get('/:year', async (req, res, next) => {
     const loggedRatio  = totalDays > 0 ? totalDays / Math.max(1, Math.floor((endDate - startDate) / 86400000)) : 0;
 
     let personalityType, personalityDesc;
-    if (cleanRatio >= 0.7) {
+    if (nightRatio >= 0.5 && nightCount >= 5) {
+      personalityType = 'The Night Owl'; personalityDesc = 'More than half your vice logs happen after 9pm. The night is your weakness.';
+    } else if (cleanRatio >= 0.7) {
       personalityType = 'The Quitter'; personalityDesc = 'You spent more days clean than not. That\'s rare.';
     } else if (weekendRatio > 0.65) {
       personalityType = 'The Weekend Warrior'; personalityDesc = 'Your vice spending spikes on weekends.';

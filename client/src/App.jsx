@@ -296,10 +296,6 @@ function MobileBottomNav() {
         <span className="mbn-icon">◈</span>
         <span className="mbn-label">Saves</span>
       </NavLink>
-      <NavLink to="/log" className={({ isActive }) => `mbn-tab mbn-tab-log${isActive ? ' mbn-active' : ''}`}>
-        <span className="mbn-log-pill">＋</span>
-        <span className="mbn-label">Log</span>
-      </NavLink>
       <NavLink to="/vices" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
         <span className="mbn-icon">◎</span>
         <span className="mbn-label">Vices</span>
@@ -307,6 +303,10 @@ function MobileBottomNav() {
       <NavLink to="/badges" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
         <span className="mbn-icon">🏅</span>
         <span className="mbn-label">Badges</span>
+      </NavLink>
+      <NavLink to="/partners" className={({ isActive }) => `mbn-tab${isActive ? ' mbn-active' : ''}`}>
+        <span className="mbn-icon">🤝</span>
+        <span className="mbn-label">Partners</span>
       </NavLink>
     </nav>
   );
@@ -984,7 +984,11 @@ function QuickDemo() {
 
 function SignedOutContent() {
   const { isDemo, isWallet } = useDemoAuth();
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   if (isDemo || isWallet) return <AuthenticatedApp />;
+
+  const isSmall = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const showGate = isSmall && !mobileExpanded;
 
   return (
     <div className="auth-page">
@@ -1037,18 +1041,38 @@ function SignedOutContent() {
             <p>Connect with Phantom, MetaMask, Base Wallet, claim a username token, or sign in securely with email.</p>
           </div>
 
-          <WalletSignIn />
-          <div className="auth-divider"><span>or claim a username</span></div>
-          <DemoLogin />
-          <div className="auth-divider"><span>or continue with email</span></div>
-          <div className="clerk-frame">
-            <EmailAuth />
+          {/* Mobile gate — two choices before showing all auth methods */}
+          <div className={`mobile-auth-gate${showGate ? '' : ' hidden'}`}>
+            <button type="button" className="btn btn-lg mobile-auth-btn" onClick={() => setMobileExpanded(true)}>
+              Log In <span className="arrow">→</span>
+            </button>
+            <button type="button" className="btn ghost btn-lg mobile-auth-btn" onClick={() => setMobileExpanded(true)}>
+              Create Account <span className="arrow">→</span>
+            </button>
+            <div className="mobile-auth-sep" />
+            <QuickDemo />
           </div>
-          <div className="auth-divider"><span>or sign in with phone</span></div>
-          <div className="clerk-frame">
-            <PhoneAuth />
+
+          {/* Auth forms — always visible on desktop, revealed on mobile after gate */}
+          <div className={`auth-forms${showGate ? ' mobile-hidden' : ''}`}>
+            {isSmall && mobileExpanded && (
+              <button type="button" className="mobile-auth-back" onClick={() => setMobileExpanded(false)}>
+                ← All sign-in options
+              </button>
+            )}
+            <WalletSignIn />
+            <div className="auth-divider"><span>or claim a username</span></div>
+            <DemoLogin />
+            <div className="auth-divider"><span>or continue with email</span></div>
+            <div className="clerk-frame">
+              <EmailAuth />
+            </div>
+            <div className="auth-divider"><span>or sign in with phone</span></div>
+            <div className="clerk-frame">
+              <PhoneAuth />
+            </div>
+            <QuickDemo />
           </div>
-          <QuickDemo />
         </div>
       </section>
     </div>

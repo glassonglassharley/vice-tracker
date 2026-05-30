@@ -76,6 +76,13 @@ body[class*="theme-"] {
   --ink-1: var(--ink);
 }
 
+/* ── Scrollbars ───────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-2, rgba(200,200,200,0.18)); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-4, rgba(200,200,200,0.35)); }
+html { scrollbar-width: thin; scrollbar-color: var(--rule-2, rgba(200,200,200,0.18)) transparent; }
+
 /* ── Reset ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { min-height: 100%; }
@@ -112,7 +119,9 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   background: var(--paper);
   position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden;
   transition: padding 0.28s cubic-bezier(0.2,0.7,0.2,1);
+  scrollbar-width: none;
 }
+.side::-webkit-scrollbar { display: none; }
 .side.collapsed { padding: 22px 10px; }
 
 .side-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -129,11 +138,16 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 
 .brand { display: flex; align-items: center; min-width: 0; }
 .brand-logo-svg {
-  width: 160px; height: auto; flex-shrink: 0;
-  color: var(--ink);
+  display: block;
+  width: auto; max-width: 160px; height: 36px;
+  object-fit: contain; object-position: left center;
+  flex-shrink: 0;
 }
 .brand-mark-svg {
-  width: 36px; height: 36px; flex-shrink: 0;
+  display: block;
+  width: 36px; height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .brand-sub { font-size: 11px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
 
@@ -789,7 +803,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   background: radial-gradient(circle, rgba(94,196,138,0.20), transparent 70%);
 }
 .auth-logo-row { display: flex; align-items: center; color: #f4f7ee; }
-.auth-logo-svg { width: 200px; height: auto; }
+.auth-logo-svg { display: block; width: auto; max-width: 200px; height: 48px; object-fit: contain; object-position: left center; }
 .auth-hero-copy { max-width: 620px; margin: 56px 0 30px; }
 .auth-kicker {
   display: inline-flex; padding: 7px 11px; border-radius: 999px;
@@ -898,6 +912,10 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
 .auth-demo-icon { font-size: 22px; flex-shrink: 0; }
 .auth-demo-label { display: block; font-weight: 700; font-size: 14px; color: #0c2a1f; }
 .auth-demo-sub { display: block; margin-top: 2px; font-size: 12px; color: #5e7868; }
+
+/* Mobile auth gate — hidden on desktop, managed by JS on mobile */
+.mobile-auth-gate { display: none; }
+.mobile-auth-back { display: none; }
 
 .auth-divider {
   width: 100%; display: flex; align-items: center; gap: 12px;
@@ -2045,7 +2063,7 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .hamburger-btn[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
   .mobile-brand { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; }
-  .mobile-brand .brand-mark-svg { width: 34px; height: 34px; }
+  .mobile-brand .brand-mark-svg { display: block; width: 34px; height: 34px; object-fit: contain; }
   .mobile-brand-name {
     font-family: var(--serif); font-size: 18px; line-height: 1.05;
     color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2114,6 +2132,20 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   .demo-login-row { grid-template-columns: 1fr; }
   .auth-card-panel .btn { width: 100%; }
   .auth-preview-card { display: none; }
+  .auth-logo-svg { width: auto; max-width: 140px; height: 40px; }
+
+  /* Mobile auth gate — show choice buttons before revealing all sign-in methods */
+  .mobile-auth-gate { display: flex; flex-direction: column; gap: 12px; }
+  .mobile-auth-gate.hidden { display: none; }
+  .auth-forms.mobile-hidden { display: none; }
+  .mobile-auth-btn { width: 100%; justify-content: center; min-height: 52px; font-size: 15px; border-radius: 12px; }
+  .mobile-auth-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #5e7868; font-size: 13px; font-weight: 500; letter-spacing: -0.01em;
+    background: none; border: none; cursor: pointer; padding: 0 0 14px; font-family: inherit;
+  }
+  .mobile-auth-back:hover { color: #0c2a1f; }
+  .mobile-auth-sep { height: 1px; background: rgba(12,42,31,0.12); margin: 4px 0; }
 
   .main {
     min-height: 100dvh;

@@ -141,7 +141,9 @@ All routes require a valid Clerk session token in the `Authorization: Bearer <to
 
 ### Environment variables
 
-Add all four of these in the Vercel dashboard under **Project → Settings → Environment Variables**:
+Add these in the Vercel dashboard under **Project → Settings → Environment Variables**:
+
+**Required:**
 
 | Variable | Where to get it |
 |---|---|
@@ -150,6 +152,19 @@ Add all four of these in the Vercel dashboard under **Project → Settings → E
 | `CLERK_PUBLISHABLE_KEY` | Clerk dashboard → API Keys |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Same value as `CLERK_PUBLISHABLE_KEY` — the `VITE_` prefix is required for Vite to expose it to the browser bundle |
 
+**Optional (enables AI insights, push notifications, and bank import):**
+
+| Variable | Where to get it |
+|---|---|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys. Enables weekly AI insights, quit plans, and Wrapped AI summaries. |
+| `VAPID_PUBLIC_KEY` | Generate with `node -e "require('web-push').generateVAPIDKeys()"` |
+| `VAPID_PRIVATE_KEY` | Same command as above |
+| `VAPID_SUBJECT` | Your contact email, e.g. `mailto:you@example.com` |
+| `CRON_SECRET` | Any random string — used to authenticate Vercel cron jobs |
+| `PLAID_CLIENT_ID` | [dashboard.plaid.com](https://dashboard.plaid.com) |
+| `PLAID_SECRET` | Plaid dashboard → Credentials |
+| `PLAID_ENV` | `sandbox` for testing, `production` for live bank data |
+
 > Supabase users: append `?sslmode=require` to `DATABASE_URL` if you see SSL connection errors.
 
 ### Deploy steps
@@ -157,7 +172,7 @@ Add all four of these in the Vercel dashboard under **Project → Settings → E
 1. Push the project to a GitHub repo.
 2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import the repo.
 3. Vercel will auto-detect the `vercel.json` at the root. No framework preset needed.
-4. Add the four environment variables listed above in the **Environment Variables** section before clicking deploy.
+4. Add the environment variables listed above in the **Environment Variables** section before clicking deploy.
 5. Click **Deploy**.
 
 Vercel will:

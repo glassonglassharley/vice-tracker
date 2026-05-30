@@ -1,6 +1,72 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
+
+function Confetti() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const COLORS = ['#0F6E56', '#5ec48a', '#ffd700', '#ff9f43', '#74c0fc', '#ffffff'];
+    const pieces = Array.from({ length: 130 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height * 0.6,
+      vx: (Math.random() - 0.5) * 7,
+      vy: Math.random() * 5 + 2,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      w: Math.random() * 12 + 4,
+      h: Math.random() * 7 + 3,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.25,
+    }));
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.13; p.angle += p.spin;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <canvas
+      ref={ref}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+    />
+  );
+}
+
+function LevelUpOverlay({ data, onDismiss }) {
+  return (
+    <div className="celeb-overlay" onClick={onDismiss} style={{ zIndex: 300 }}>
+      <Confetti />
+      <div className="celeb-card" onClick={e => e.stopPropagation()}>
+        <div className="celeb-check" style={{ fontSize: 36 }}>{data.level_icon}</div>
+        <div className="celeb-kicker">Level Up!</div>
+        <div className="celeb-title">{data.level_name}</div>
+        <div className="celeb-amount" style={{ fontSize: 'clamp(32px,10vw,52px)' }}>
+          Level {data.level}
+        </div>
+        <div className="celeb-sub">
+          {data.total_xp.toLocaleString()} XP total
+          {data.next_level_name ? ` · Next: ${data.next_level_name} ${data.next_level_icon}` : ''}
+        </div>
+        <div className="celeb-actions">
+          <button className="btn" onClick={onDismiss}>Keep going</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
   BarElement, Title, Tooltip, Legend
@@ -137,6 +203,7 @@ export default function Dashboard() {
   // XP + levels
   const [xpData, setXpData] = useState(null);
   const [levelUpMsg, setLevelUpMsg] = useState('');
+  const [levelUpOverlay, setLevelUpOverlay] = useState(null);
 
   // Weekly AI insight
   const [weeklyInsight, setWeeklyInsight] = useState(null);
@@ -156,13 +223,16 @@ export default function Dashboard() {
       .then(({ newly_earned }) => { if (newly_earned?.length) setNewBadges(newly_earned); })
       .catch(() => {});
     apiRef.current('/api/xp').then(data => {
-      setXpData(prev => {
-        if (prev && data.level > prev.level) {
+      setXpData(data);
+      try {
+        const storedLevel = parseInt(localStorage.getItem('vt-last-level') || '0', 10);
+        if (storedLevel > 0 && data.level > storedLevel) {
+          setLevelUpOverlay(data);
           setLevelUpMsg(`Level up! You're now a ${data.level_name} ${data.level_icon}`);
-          setTimeout(() => setLevelUpMsg(''), 4000);
+          setTimeout(() => setLevelUpMsg(''), 5000);
         }
-        return data;
-      });
+        localStorage.setItem('vt-last-level', String(data.level));
+      } catch {}
     }).catch(() => {});
     apiRef.current('/api/insights/weekly', { method: 'POST' })
       .then(d => { if (d.insight) setWeeklyInsight(d.insight); })
@@ -356,6 +426,10 @@ export default function Dashboard() {
 
       {newBadges.length > 0 && (
         <BadgeCelebOverlay badges={newBadges} onDismiss={() => setNewBadges([])} />
+      )}
+
+      {levelUpOverlay && (
+        <LevelUpOverlay data={levelUpOverlay} onDismiss={() => setLevelUpOverlay(null)} />
       )}
 
       {companion?.companion_type && (
