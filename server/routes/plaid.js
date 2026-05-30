@@ -51,17 +51,41 @@ function getPlaidClient() {
 }
 
 // POST /api/plaid/create-link-token
+// Body (all optional): { institution_id } — pass Plaid institution ID to pre-select a bank
 router.post('/create-link-token', async (req, res, next) => {
   try {
     const { Products, CountryCode } = require('plaid');
     const plaid = getPlaidClient();
-    const response = await plaid.linkTokenCreate({
-      user: { client_user_id: String(req.auth.userId) },
+    const { institution_id } = req.body || {};
+
+    // Pass verified phone from Clerk so Plaid can use it for OTP / identity verification
+    const plaidUser = { client_user_id: String(req.auth.userId) };
+    try {
+      const { clerkClient } = require('@clerk/express');
+      const clerkUser = await clerkClient.users.getUser(req.auth.userId);
+      const phones = clerkUser.phoneNumbers || [];
+      const verified = phones.find(p => p.verification?.status === 'verified') || phones[0];
+      if (verified?.phoneNumber) {
+        plaidUser.phone_number = verified.phoneNumber; // E.164 format from Clerk
+        if (verified.verification?.verifiedAtTime) {
+          plaidUser.phone_number_verified_time = new Date(verified.verification.verifiedAtTime).toISOString();
+        }
+      }
+    } catch (_) {}
+
+    const linkParams = {
+      user: plaidUser,
       client_name: 'Vice Spending',
       products: [Products.Transactions],
       country_codes: [CountryCode.Us],
       language: 'en',
-    });
+    };
+    // Pre-select a specific institution (e.g. Navy Federal ins_133383) to bypass fuzzy search
+    if (institution_id && /^ins_[0-9]+$/.test(institution_id)) {
+      linkParams.institution_id = institution_id;
+    }
+
+    const response = await plaid.linkTokenCreate(linkParams);
     res.json({ link_token: response.data.link_token });
   } catch (err) {
     console.error('Plaid create-link-token error:', err.response?.data || err.message);
@@ -147,6 +171,50 @@ router.post('/sync', async (req, res, next) => {
     console.error('Plaid sync error:', err.response?.data || err.message);
     next(err);
   }
+});
+
+// DELETE /api/plaid/imports — remove all entries tagged "(imported from bank)" for this user
+router.delete('/imports', async (req, res, next) => {
+  try {
+    const userRow = await pool.query('SELECT id FROM users WHERE clerk_user_id = $1', [req.auth.userId]);
+    const userId = userRow.rows[0]?.id;
+    if (!userId) return res.status(404).json({ error: 'User not found' });
+
+    const result = await pool.query(
+      `DELETE FROM entries
+       WHERE note LIKE '%imported from bank%'
+         AND vice_id IN (SELECT id FROM vices WHERE user_id = $1)
+       RETURNING id`,
+      [userId]
+    );
+    res.json({ deleted: result.rowCount });
+  } catch (err) { next(err); }
+});
+
+// POST /api/plaid/move-entries — move all entries from one vice to another for this user
+// Body: { from_vice_id, to_vice_id }
+router.post('/move-entries', async (req, res, next) => {
+  try {
+    const { from_vice_id, to_vice_id } = req.body;
+    if (!from_vice_id || !to_vice_id) return res.status(400).json({ error: 'from_vice_id and to_vice_id required' });
+
+    const userRow = await pool.query('SELECT id FROM users WHERE clerk_user_id = $1', [req.auth.userId]);
+    const userId = userRow.rows[0]?.id;
+    if (!userId) return res.status(404).json({ error: 'User not found' });
+
+    // Verify the user owns both vices
+    const ownsCheck = await pool.query(
+      'SELECT id FROM vices WHERE id = ANY($1) AND user_id = $2',
+      [[Number(from_vice_id), Number(to_vice_id)], userId]
+    );
+    if (ownsCheck.rowCount < 2) return res.status(403).json({ error: 'Forbidden' });
+
+    const result = await pool.query(
+      `UPDATE entries SET vice_id = $1 WHERE vice_id = $2 RETURNING id`,
+      [Number(to_vice_id), Number(from_vice_id)]
+    );
+    res.json({ moved: result.rowCount });
+  } catch (err) { next(err); }
 });
 
 // GET /api/plaid/status — check whether the user has a connected bank

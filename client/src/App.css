@@ -1725,6 +1725,13 @@ button { cursor: pointer; font: inherit; border: none; background: none; }
   transition: border-color 0.12s;
 }
 .plaid-tx-vice-select:focus { outline: none; border-color: var(--money); }
+.plaid-move-tool {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 10px 14px; border-radius: 10px; margin-bottom: 14px;
+  background: var(--paper-2); border: 1px solid var(--rule);
+}
+.plaid-move-label { font-size: 11px; color: var(--ink-3); font-family: var(--mono); white-space: nowrap; }
+.plaid-move-status { font-size: 11px; color: var(--money); font-family: var(--mono); }
 
 /* ── Annual Wrapped ──────────────────────────────── */
 .wr-loading {

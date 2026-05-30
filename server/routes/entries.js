@@ -23,7 +23,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { vice_id, date, quantity, price_per_unit } = req.body;
+    const { vice_id, date, quantity, price_per_unit, note } = req.body;
     const viceId = Number(vice_id);
     const entryQuantity = Number(quantity ?? 0);
     const entryPrice = Number(price_per_unit ?? 0);
@@ -40,10 +40,10 @@ router.post('/', async (req, res, next) => {
     // the entries table intentionally has no unique (vice_id, date) constraint
     // so users can log multiple same-day entries without overwriting history.
     const r = await pool.query(
-      `INSERT INTO entries (vice_id, date, quantity, price_per_unit)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO entries (vice_id, date, quantity, price_per_unit, note)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [viceId, date, entryQuantity, entryPrice]
+      [viceId, date, entryQuantity, entryPrice, note || null]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) { next(err); }

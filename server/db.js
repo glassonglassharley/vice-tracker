@@ -79,6 +79,7 @@ const MIGRATIONS = `
   CREATE UNIQUE INDEX IF NOT EXISTS users_username_token_hash_unique ON users (username_token_hash) WHERE username_token_hash IS NOT NULL;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_session_token_hash TEXT;
 
+  ALTER TABLE entries ADD COLUMN IF NOT EXISTS note TEXT;
   ALTER TABLE entries DROP CONSTRAINT IF EXISTS entries_vice_id_date_key;
 
   CREATE TABLE IF NOT EXISTS plaid_connections (

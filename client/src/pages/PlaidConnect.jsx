@@ -58,6 +58,9 @@ export default function PlaidConnect({ vices }) {
   const [skipped, setSkipped] = useState(new Set());
   const [logged, setLogged] = useState(new Set());
   const [selectedVices, setSelectedVices] = useState({}); // { [transactionId]: viceId }
+  const [moveFrom, setMoveFrom] = useState('');
+  const [moveTo, setMoveTo] = useState('');
+  const [moveStatus, setMoveStatus] = useState('');
   // Pending exchange: set after Plaid Link succeeds, cleared after user confirms or cancels
   const [pendingExchange, setPendingExchange] = useState(null); // { public_token, institution_name } | null
 
@@ -155,6 +158,22 @@ export default function PlaidConnect({ vices }) {
     }
   };
 
+  const moveEntries = async () => {
+    if (!moveFrom || !moveTo || moveFrom === moveTo) return;
+    setMoveStatus('moving');
+    try {
+      const { moved } = await api('/api/plaid/move-entries', {
+        method: 'POST',
+        body: JSON.stringify({ from_vice_id: Number(moveFrom), to_vice_id: Number(moveTo) }),
+      });
+      setMoveStatus(`Moved ${moved} entr${moved === 1 ? 'y' : 'ies'} ✓`);
+      setMoveFrom('');
+      setMoveTo('');
+    } catch (err) {
+      setMoveStatus(err.message || 'Move failed');
+    }
+  };
+
   const toggleConfirm = (id) => {
     setConfirmed(prev => {
       const next = new Set(prev);
@@ -225,6 +244,40 @@ export default function PlaidConnect({ vices }) {
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+
+      {/* Fix: move all entries between vices — useful when imports landed under the wrong vice */}
+      {userVices.length >= 2 && (
+        <div className="plaid-move-tool">
+          <span className="plaid-move-label">Fix assignment</span>
+          <select
+            className="plaid-tx-vice-select"
+            value={moveFrom}
+            onChange={e => setMoveFrom(e.target.value)}
+          >
+            <option value="">From vice…</option>
+            {userVices.map(v => <option key={v.id} value={v.id}>{v.emoji} {v.name}</option>)}
+          </select>
+          <span style={{ color: 'var(--ink-4)', fontSize: 12 }}>→</span>
+          <select
+            className="plaid-tx-vice-select"
+            value={moveTo}
+            onChange={e => setMoveTo(e.target.value)}
+          >
+            <option value="">To vice…</option>
+            {userVices.map(v => <option key={v.id} value={v.id}>{v.emoji} {v.name}</option>)}
+          </select>
+          <button
+            className="btn btn-sm"
+            onClick={moveEntries}
+            disabled={!moveFrom || !moveTo || moveFrom === moveTo || moveStatus === 'moving'}
+          >
+            {moveStatus === 'moving' ? 'Moving…' : 'Move all'}
+          </button>
+          {moveStatus && moveStatus !== 'moving' && (
+            <span className="plaid-move-status">{moveStatus}</span>
+          )}
+        </div>
+      )}
 
       {/* Institution confirmation — shown after Plaid Link succeeds, before token exchange */}
       {pendingExchange && (
