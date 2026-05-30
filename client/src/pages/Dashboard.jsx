@@ -402,6 +402,16 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {weeklyInsight && (
+        <div className="insight-card insight-card-top">
+          <div className="insight-card-head">
+            <span className="insight-sparkle">✨</span>
+            <span className="insight-title">Weekly insight</span>
+          </div>
+          <p className="insight-body">{weeklyInsight}</p>
+        </div>
+      )}
+
       {challenges.map(c => (
         <div key={c.id} className="challenge-banner">
           <span className="challenge-icon">⚔️</span>
@@ -426,16 +436,6 @@ export default function Dashboard() {
 
       {levelUpOverlay && (
         <LevelUpOverlay data={levelUpOverlay} onDismiss={() => setLevelUpOverlay(null)} />
-      )}
-
-      {weeklyInsight && (
-        <div className="insight-card insight-card-top">
-          <div className="insight-card-head">
-            <span className="insight-sparkle">✨</span>
-            <span className="insight-title">Weekly insight</span>
-          </div>
-          <p className="insight-body">{weeklyInsight}</p>
-        </div>
       )}
 
       {companion?.companion_type && (
